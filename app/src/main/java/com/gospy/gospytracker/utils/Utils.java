@@ -1,5 +1,5 @@
 
-package com.gospy.gospytracker;
+package com.gospy.gospytracker.utils;
 
 /**
  * Copyright 2017 Google Inc. All Rights Reserved.
@@ -31,7 +31,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -44,74 +43,118 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+import com.gospy.gospytracker.MainActivity;
+import com.gospy.gospytracker.R;
 
-import java.io.IOException;
 import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
-import java.util.UUID;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 /**
  * Utility methods used in this sample.
  */
-class Utils {
+public class Utils {
 
-    final static String KEY_LOCATION_UPDATES_REQUESTED = "location-updates-requested";
-    final static String KEY_LOCATION_UPDATES_RESULT = "location-update-result";
-    final static String CHANNEL_ID = "channel_01";
+    public static Context appContext;
+    public final static String KEY_IS_LOCATION_UPDATES_REQUESTED = "location-updates-requested";
+    public final static String KEY_LOCATION_UPDATES_RESULT = "location-update-result";
+    public final static String KEY_SERVER_IP = "server-ip";
+    public final static String KEY_TRACKED_USER_ID = "tracked-user-id";
+    public final static String KEY_TRACKED_DEVICE_APP_UID = "tracked-device-app-uid";
+
+    public final static String KEY_IS_USER_MOVING = "location-updates-requested";
+    public final static String KEY_IS_GEOFENCE_SET = "location-updates-requested";
+    public final static String KEY_LAST_KNOWN_LOCATION = "location-updates-requested";
+    public final static String IS_KEY_LOCATION_UPDATES_REQUESTED = "location-updates-requested";
+
+    public final static String CHANNEL_ID = "channel_01";
     private static final String TAG = Utils.class.getSimpleName();
-    private static String deviceAppUID = "UNKNOWN";
+
+    public final static String defaultDeviceAppUID = "UNKNOWN";
+    public final static String defaultUserID = "UNKNOWN_USER_ID";
+    public final static String defaultServerIp = "158.101.171.124";
+
+
+    static public void setAppContext(Context ctx){
+        appContext = ctx;
+    }
 
     static public void generateDeviceAppUID(Context context) {
 
-        try {
-            final TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        if (getSPStringValue(appContext, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(defaultDeviceAppUID)) {
+            try {
+                final TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 
-            final String tmDevice, tmSerial, androidId;
+                String tmDevice, tmSerial, androidId, deviceAppUID;
 
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
-                return;
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return;
+                }
+                tmDevice = "" + tm.getDeviceId();
+                tmSerial = "" + tm.getSimSerialNumber();
+                androidId = "" + android.provider.Settings.Secure.getString(context.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
+
+                deviceAppUID = androidId + tmDevice + tmSerial;
+
+                setSPStringValue(appContext, Utils.KEY_TRACKED_DEVICE_APP_UID, deviceAppUID);
+
+            } catch (Exception exc) {
+                Log.i(TAG, exc.toString());
             }
-            tmDevice = "" + tm.getDeviceId();
-            tmSerial = "" + tm.getSimSerialNumber();
-            androidId = "" + android.provider.Settings.Secure.getString(context.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
-
-            deviceAppUID = androidId + tmDevice + tmSerial;
-        }catch (Exception exc){
-            Log.i(TAG,exc.toString());
         }
 
     }
 
-    static public String getDeviceAppUID() {
-        return deviceAppUID;
-    }
-
-    static void setRequestingLocationUpdates(Context context, boolean value) {
+    public static void setSPStringValue(Context context, String key,String value) {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
-                .putBoolean(KEY_LOCATION_UPDATES_REQUESTED, value)
+                .putString(key, value)
                 .apply();
     }
 
-    static public boolean isNetwork(Context context) {
+    public static String getSPStringValue(Context context, String key) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(key, defaultDeviceAppUID);
+    }
+
+    public static void setSPBooleanValue(Context context, String key, boolean value) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putBoolean(key, value)
+                .apply();
+    }
+
+    public static boolean getSPBooleanValue(Context context, String key) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean(key, false);
+    }
+
+    public static void setSPLongValue(Context context, String key, long value) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putLong(key, value)
+                .apply();
+    }
+
+    public static long getSPLongValue(Context context, String key) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getLong(key, -1);
+    }
+
+
+
+
+    public static boolean isNetwork(Context context) {
 
         ConnectivityManager cm = (ConnectivityManager) context
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -123,16 +166,13 @@ class Utils {
         return false;
     }
 
-    static boolean getRequestingLocationUpdates(Context context) {
-        return PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(KEY_LOCATION_UPDATES_REQUESTED, false);
-    }
+
 
     /**
      * Posts a notification in the notification bar when a transition is detected.
      * If the user clicks the notification, control goes to the MainActivity.
      */
-    static void sendNotification(Context context, String notificationDetails) {
+    public static void sendNotification(Context context, String notificationDetails) {
         // Create an explicit content Intent that starts the main Activity.
         Intent notificationIntent = new Intent(context, MainActivity.class);
 
@@ -196,7 +236,7 @@ class Utils {
      *
      * @param context The {@link Context}.
      */
-    static String getLocationResultTitle(Context context, List<Location> locations) {
+    public static String getLocationResultTitle(Context context, List<Location> locations) {
         String numLocationsReported = context.getResources().getQuantityString(
                 R.plurals.num_locations_reported, locations.size(), locations.size());
         return numLocationsReported + ": " + DateFormat.getDateTimeInstance().format(new Date());
@@ -251,7 +291,7 @@ class Utils {
         return json.toString();
     }
 
-    static void setLocationUpdatesResult(Context context, List<Location> locations) {
+    public static void setLocationUpdatesResult(Context context, List<Location> locations) {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
                 .putString(KEY_LOCATION_UPDATES_RESULT, getLocationResultTitle(context, locations)
@@ -259,7 +299,7 @@ class Utils {
                 .apply();
     }
 
-    static String getLocationUpdatesResult(Context context) {
+    public static String getLocationUpdatesResult(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(KEY_LOCATION_UPDATES_RESULT, "");
     }
@@ -268,18 +308,16 @@ class Utils {
      * Returns the latest settings from the remote repository.
      * Settings are in json format
      */
-    static String getSettingsUpdate() {
+    public static void getSettingsUpdate() {
 
-        String settingsJson = "";
         new SettingsGrabber().execute(); //execute the asynctask
 
-        return settingsJson;
     }
 
     /**
      * Post location data to server
      */
-    static void postLocationData(Context ctx, String url) {
+    public static void postLocationData(Context ctx, String url) {
         // Instantiate the RequestQueue.
         RequestQueue queue = RequestQueueSingleton.getInstance(ctx).
                 getRequestQueue();

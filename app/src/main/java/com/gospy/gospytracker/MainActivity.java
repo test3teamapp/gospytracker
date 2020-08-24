@@ -19,28 +19,34 @@
 package com.gospy.gospytracker;
 
 import android.Manifest;
-import android.app.AlarmManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.hardware.Sensor;
-import android.hardware.SensorListener;
-import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
+import androidx.work.Constraints;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.material.snackbar.Snackbar;
+import com.gospy.gospytracker.utils.Utils;
+
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -79,29 +85,24 @@ public class MainActivity extends FragmentActivity implements
     // UI Widgets.
     private Button mRequestUpdatesButton;
     private Button mRemoveUpdatesButton;
-    private TextView mLocationUpdatesResultView;
+    private Button mSetDeviceIdButton;
+    private TextView mCurrentDeviceIdView;
+    private EditText mUpdateDeviceIdView;
 
-    private SensorManager mSensorManager;
-    private Sensor mAccelerometerSensor;
-    private Sensor mSigMotion;
-    private Sensor mTiltSensor;
-    private Sensor mLightSensor;
-    private Sensor mLinearAccelarationSensor;
-    private Sensor mMotionSensor;
-    private Sensor mProximitySensor;
-    private Sensor mMagneticFieldSensor;
-    private SensorListener mSensorListener;
-
-    private AlarmManager mAlarmManager;
+    private WorkManager mWorkManager;
+    private PowerManager.WakeLock wl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Utils.setAppContext(this);
 
         mRequestUpdatesButton = (Button) findViewById(R.id.request_updates_button);
         mRemoveUpdatesButton = (Button) findViewById(R.id.remove_updates_button);
-       // mLocationUpdatesResultView = (TextView) findViewById(R.id.location_updates_result);
+        mSetDeviceIdButton = (Button) findViewById(R.id.set_device_id_button);;
+        mCurrentDeviceIdView = (TextView) findViewById(R.id.main_activity_current_device_id_txt);
+        mUpdateDeviceIdView = (EditText) findViewById(R.id.main_activity_input_device_id_txt);
 
         // Check if the user revoked runtime permissions.
         if (!checkPermissions()) {
@@ -111,7 +112,12 @@ public class MainActivity extends FragmentActivity implements
         if (Utils.isNetwork(this)) {
             Utils.getSettingsUpdate();
         }
-        Utils.generateDeviceAppUID(this);
+        if (Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.defaultDeviceAppUID)){
+            Utils.generateDeviceAppUID(this);
+        }
+        // update the text views for the device id
+        mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
+                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID) );
 
     }
 
@@ -126,13 +132,15 @@ public class MainActivity extends FragmentActivity implements
     @Override
     protected void onResume() {
         super.onResume();
-        updateButtonsState(Utils.getRequestingLocationUpdates(this));
+        Utils.setAppContext(this);
+        updateButtonsState(Utils.getSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
+        // update the text views for the device id
+        mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
+                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID) );
         if (Utils.isNetwork(this)) {
             Utils.getSettingsUpdate();
         }
-        //mLocationUpdatesResultView.setText(Utils.getLocationUpdatesResult(this));
 
-        sensorSetup();
     }
 
     @Override
@@ -140,6 +148,66 @@ public class MainActivity extends FragmentActivity implements
         PreferenceManager.getDefaultSharedPreferences(this)
                 .unregisterOnSharedPreferenceChangeListener(this);
         super.onStop();
+    }
+
+    public void setDeviceId(View view){
+        if (this.mUpdateDeviceIdView.getText().toString().isEmpty()){
+            Toast.makeText(this, "Please provide an identifier for the device", Toast.LENGTH_SHORT).show();
+        }else {
+            Utils.setSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID, this.mUpdateDeviceIdView.getText().toString());
+        }
+        // update the text views for the device id
+        mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
+                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID) );
+
+    }
+
+    /**
+     * Handles the Request Updates button and requests start of location updates.
+     */
+    public void requestLocationUpdates(View view) {
+
+       // PowerManager pm = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
+       //  wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+       //         "GoSpyTracker:WakelockForLU");
+       // wl.acquire();
+
+        //if (wl.isHeld()) {
+           /* WorkRequest uploadWorkRequest =
+                new OneTimeWorkRequest.Builder(MainWorker.class)
+                        .build();*/
+
+            Constraints constraints = new Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build();
+
+            PeriodicWorkRequest luRequest =
+                    new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES)
+                            // Constraints
+                            .setConstraints(constraints)
+                            // tag fro removing the work if needed
+                            .addTag("periodicLuWorkRequest")
+                            .build();
+
+            WorkManager.getInstance(this).enqueue(luRequest);
+            Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED,true);
+       // }
+
+
+    }
+
+    /**
+     * Handles the Remove Updates button, and requests removal of location updates.
+     */
+    public void removeLocationUpdates(View view) {
+
+        /*if (wl != null) {
+            if (wl.isHeld()){
+                wl.release();
+            }
+        }*/
+        WorkManager.getInstance(this).cancelAllWorkByTag("periodicLuWorkRequest");
+        Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED,false);
     }
 
     /**
@@ -164,6 +232,9 @@ public class MainActivity extends FragmentActivity implements
         int networkstatePermissionState = ActivityCompat.checkSelfPermission(
                 this, Manifest.permission.ACCESS_NETWORK_STATE);
 
+        int wakelockPermissionState = ActivityCompat.checkSelfPermission(
+                this, Manifest.permission.WAKE_LOCK);
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
@@ -180,7 +251,8 @@ public class MainActivity extends FragmentActivity implements
                 (coarseLocationPermissionState == PackageManager.PERMISSION_GRANTED) &&
                 (internetPermissionState == PackageManager.PERMISSION_GRANTED) &&
                 (phonestatePermissionState == PackageManager.PERMISSION_GRANTED) &&
-                (networkstatePermissionState == PackageManager.PERMISSION_GRANTED);
+                (networkstatePermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (wakelockPermissionState == PackageManager.PERMISSION_GRANTED);
     }
 
     private void requestPermissions() {
@@ -215,6 +287,11 @@ public class MainActivity extends FragmentActivity implements
                         this, Manifest.permission.ACCESS_NETWORK_STATE)
                         == PackageManager.PERMISSION_GRANTED;
 
+        boolean wakelockPermissionApproved =
+                ActivityCompat.checkSelfPermission(
+                        this, Manifest.permission.WAKE_LOCK)
+                        == PackageManager.PERMISSION_GRANTED;
+
         boolean shouldProvideRationale =
                 permissionAccessFineLocationApproved && backgroundLocationPermissionApproved &&
                         coarseLocationPermissionApproved && internetPermissionApproved && networkstatePermissionApproved;
@@ -238,7 +315,8 @@ public class MainActivity extends FragmentActivity implements
                                             Manifest.permission.ACCESS_COARSE_LOCATION,
                                             Manifest.permission.INTERNET,
                                             Manifest.permission.READ_PHONE_STATE,
-                                            Manifest.permission.ACCESS_NETWORK_STATE},
+                                            Manifest.permission.ACCESS_NETWORK_STATE,
+                                            Manifest.permission.WAKE_LOCK},
                                     REQUEST_PERMISSIONS_REQUEST_CODE);
                         }
                     })
@@ -255,7 +333,8 @@ public class MainActivity extends FragmentActivity implements
                             Manifest.permission.ACCESS_COARSE_LOCATION,
                             Manifest.permission.INTERNET,
                             Manifest.permission.READ_PHONE_STATE,
-                            Manifest.permission.ACCESS_NETWORK_STATE},
+                            Manifest.permission.ACCESS_NETWORK_STATE,
+                            Manifest.permission.WAKE_LOCK},
                     REQUEST_PERMISSIONS_REQUEST_CODE);
         }
     }
@@ -278,10 +357,10 @@ public class MainActivity extends FragmentActivity implements
                     (grantResults[2] == PackageManager.PERMISSION_GRANTED) &&
                     (grantResults[3] == PackageManager.PERMISSION_GRANTED) &&
                     (grantResults[4] == PackageManager.PERMISSION_GRANTED) &&
-                    (grantResults[5] == PackageManager.PERMISSION_GRANTED)
+                    (grantResults[5] == PackageManager.PERMISSION_GRANTED) &&
+                    (grantResults[6] == PackageManager.PERMISSION_GRANTED)
             ) {
                 // Permission was granted.
-                requestLocationUpdates(null);
 
             } else {
                 // Permission denied.
@@ -322,67 +401,11 @@ public class MainActivity extends FragmentActivity implements
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
         if (s.equals(Utils.KEY_LOCATION_UPDATES_RESULT)) {
             //mLocationUpdatesResultView.setText(Utils.getLocationUpdatesResult(this));
-        } else if (s.equals(Utils.KEY_LOCATION_UPDATES_REQUESTED)) {
-            updateButtonsState(Utils.getRequestingLocationUpdates(this));
+        } else if (s.equals(Utils.KEY_IS_LOCATION_UPDATES_REQUESTED)) {
+            updateButtonsState(Utils.getSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
         }
     }
 
-    public void sensorSetup() {
-        //sensor set up
-        // Retrieve a PendingIntent that will perform a broadcast
-        //alarm manager can be retrieved from static content
-        mAlarmManager = (AlarmManager) getSystemService(this.ALARM_SERVICE);
-        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        //mSensorListener = SensorListener.getSingletonSensorListener(this, mAlarmManager, mSensorManager);
-
-        assert mSensorManager != null;
-        // mAccelerometerSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mSigMotion = mSensorManager.getDefaultSensor(Sensor.TYPE_SIGNIFICANT_MOTION,true);
-        //mTiltSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        //mLightSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-        //mLinearAccelarationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        //mMotionSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MOTION_DETECT);
-        //mProximitySensor = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
-        //mMagneticFieldSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        //assert mAccelerometerSensor != null;
-        //mSensorManager.registerListener(mSensorListener, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        assert mSigMotion != null;
-       // mSensorManager.requestTriggerSensor(mSensorListener, mSigMotion);
-        // mSensorManager.registerListener(mSensorListener, mTiltSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        // mSensorManager.registerListener(mSensorListener, mLightSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        // mSensorManager.registerListener(mSensorListener, mLinearAccelarationSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        //mSensorManager.registerListener(mSensorListener, mMotionSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        // mSensorManager.registerListener(mSensorListener, mProximitySensor, SensorManager.SENSOR_DELAY_NORMAL);
-        // mSensorManager.registerListener(mSensorListener, mMagneticFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
-
-
-    }
-
-    /**
-     * Handles the Request Updates button and requests start of location updates.
-     */
-    public void requestLocationUpdates(View view) {
-
-        if (mSensorManager == null) {
-            sensorSetup();
-        }
-
-        if (mAlarmManager == null) {
-            mAlarmManager = (AlarmManager) getSystemService(this.ALARM_SERVICE);
-           // mSensorListener.setAlarmManager(mAlarmManager);
-        }
-
-    }
-
-    /**
-     * Handles the Remove Updates button, and requests removal of location updates.
-     */
-    public void removeLocationUpdates(View view) {
-        if (mSensorManager != null) {
-            mSensorManager.unregisterListener(mSensorListener);
-        }
-
-    }
 
     /**
      * Ensures that only one button is enabled at any time. The Start Updates button is enabled

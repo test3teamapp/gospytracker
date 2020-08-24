@@ -1,10 +1,11 @@
-package com.gospy.gospytracker;
+package com.gospy.gospytracker.utils;
 
 import android.content.Context;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
+import com.gospy.gospytracker.MainActivity;
 
 public class RequestQueueSingleton {
     private static RequestQueueSingleton instance;

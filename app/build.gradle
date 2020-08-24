@@ -23,6 +23,11 @@ android {
 }
 
 dependencies {
+
+    def work_version = "2.3.4"
+    // (Java only)
+    implementation "androidx.work:work-runtime:$work_version"
+
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'com.google.android.material:material:1.0.0'

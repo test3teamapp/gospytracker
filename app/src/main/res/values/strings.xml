@@ -12,6 +12,8 @@
     <string name="main_activity_title_txt">GoSpyTracker</string>
     <string name="request_updates">Request updates</string>
     <string name="remove_updates">Remove updates</string>
+    <string name="current_device_id">Current Device ID</string>
+    <string name="set_device_id">Set Device ID</string>
     <string name="permission_rationale">All the time location permission required for core functionality</string>
     <string name="permission_denied_explanation">All the time location permission denied; needed for core
         functionality.</string>
