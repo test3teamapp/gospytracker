@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "628210562452",
+    "firebase_url": "https://gospytracker.firebaseio.com",
+    "project_id": "gospytracker",
+    "storage_bucket": "gospytracker.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:628210562452:android:16664f9a673c9bafbf4b81",
+        "android_client_info": {
+          "package_name": "com.gospy.gospytracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "628210562452-bcd099m2lthq23pjf7ik55qg9r51kb8o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVSdacOBXkcJQ-4HPR0H7mIb3CrV7SCRA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "628210562452-bcd099m2lthq23pjf7ik55qg9r51kb8o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

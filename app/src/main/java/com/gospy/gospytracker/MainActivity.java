@@ -19,10 +19,13 @@
 package com.gospy.gospytracker;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
@@ -43,7 +46,12 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 import com.gospy.gospytracker.utils.Utils;
 
 import java.util.concurrent.TimeUnit;
@@ -92,15 +100,21 @@ public class MainActivity extends FragmentActivity implements
     private WorkManager mWorkManager;
     private PowerManager.WakeLock wl;
 
+    private FirebaseAnalytics mFirebaseAnalytics;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Utils.setAppContext(this);
 
+        // Obtain the FirebaseAnalytics instance.
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+
         mRequestUpdatesButton = (Button) findViewById(R.id.request_updates_button);
         mRemoveUpdatesButton = (Button) findViewById(R.id.remove_updates_button);
-        mSetDeviceIdButton = (Button) findViewById(R.id.set_device_id_button);;
+        mSetDeviceIdButton = (Button) findViewById(R.id.set_device_id_button);
+        ;
         mCurrentDeviceIdView = (TextView) findViewById(R.id.main_activity_current_device_id_txt);
         mUpdateDeviceIdView = (EditText) findViewById(R.id.main_activity_input_device_id_txt);
 
@@ -112,12 +126,64 @@ public class MainActivity extends FragmentActivity implements
         if (Utils.isNetwork(this)) {
             Utils.getSettingsUpdate();
         }
-        if (Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.defaultDeviceAppUID)){
+        if (Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.defaultDeviceAppUID)) {
             Utils.generateDeviceAppUID(this);
         }
         // update the text views for the device id
         mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID) );
+                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
+
+
+        // Get token
+        // [START retrieve_current_token]
+        FirebaseInstanceId.getInstance().getInstanceId()
+                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                        if (!task.isSuccessful()) {
+                            Log.w(TAG, "getInstanceId failed", task.getException());
+                            return;
+                        }
+
+                        // Get new Instance ID token
+                        String token = task.getResult().getToken();
+
+                        // Log and toast
+                        String msg = getString(R.string.msg_token_fmt, token);
+                        Log.d(TAG, msg);
+                        Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                    }
+                });
+        // [END retrieve_current_token]
+
+        // firebase notiification channel
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Create channel to show notifications.
+            String channelId = getString(R.string.default_notification_channel_id);
+            String channelName = getString(R.string.default_notification_channel_name);
+            NotificationManager notificationManager =
+                    getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(new NotificationChannel(channelId,
+                    channelName, NotificationManager.IMPORTANCE_LOW));
+        }
+
+        // If a notification message is tapped, any data accompanying the notification
+        // message is available in the intent extras. In this sample the launcher
+        // intent is fired when the notification is tapped, so any accompanying data would
+        // be handled here. If you want a different intent fired, set the click_action
+        // field of the notification message to the desired intent. The launcher intent
+        // is used when no click_action is specified.
+        //
+        // Handle possible data accompanying notification message.
+        // [START handle_data_extras]
+        if (getIntent().getExtras() != null) {
+            for (String key : getIntent().getExtras().keySet()) {
+                Object value = getIntent().getExtras().get(key);
+                Log.d(TAG, "Key: " + key + " Value: " + value);
+            }
+        }
+        // [END handle_data_extras]
 
     }
 
@@ -136,7 +202,7 @@ public class MainActivity extends FragmentActivity implements
         updateButtonsState(Utils.getSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
         // update the text views for the device id
         mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID) );
+                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
         if (Utils.isNetwork(this)) {
             Utils.getSettingsUpdate();
         }
@@ -150,16 +216,22 @@ public class MainActivity extends FragmentActivity implements
         super.onStop();
     }
 
-    public void setDeviceId(View view){
-        if (this.mUpdateDeviceIdView.getText().toString().isEmpty()){
+    public void setDeviceId(View view) {
+        if (this.mUpdateDeviceIdView.getText().toString().isEmpty()) {
             Toast.makeText(this, "Please provide an identifier for the device", Toast.LENGTH_SHORT).show();
-        }else {
+        } else {
             Utils.setSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID, this.mUpdateDeviceIdView.getText().toString());
         }
         // update the text views for the device id
         mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID) );
+                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
 
+        // sent an event to google analytics
+        Bundle bundle = new Bundle();
+        bundle.putString(FirebaseAnalytics.Param.ITEM_ID, this.getString(R.string.current_device_id));
+        bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
+        bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "string");
+        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
     }
 
     /**
@@ -167,31 +239,31 @@ public class MainActivity extends FragmentActivity implements
      */
     public void requestLocationUpdates(View view) {
 
-       // PowerManager pm = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
-       //  wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-       //         "GoSpyTracker:WakelockForLU");
-       // wl.acquire();
+        // PowerManager pm = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
+        //  wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+        //         "GoSpyTracker:WakelockForLU");
+        // wl.acquire();
 
         //if (wl.isHeld()) {
            /* WorkRequest uploadWorkRequest =
                 new OneTimeWorkRequest.Builder(MainWorker.class)
                         .build();*/
 
-            Constraints constraints = new Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build();
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
 
-            PeriodicWorkRequest luRequest =
-                    new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES)
-                            // Constraints
-                            .setConstraints(constraints)
-                            // tag fro removing the work if needed
-                            .addTag("periodicLuWorkRequest")
-                            .build();
+        PeriodicWorkRequest luRequest =
+                new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES)
+                        // Constraints
+                        .setConstraints(constraints)
+                        // tag fro removing the work if needed
+                        .addTag("periodicLuWorkRequest")
+                        .build();
 
-            WorkManager.getInstance(this).enqueue(luRequest);
-            Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED,true);
-       // }
+        WorkManager.getInstance(this).enqueue(luRequest);
+        Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
+        // }
 
 
     }
@@ -207,7 +279,7 @@ public class MainActivity extends FragmentActivity implements
             }
         }*/
         WorkManager.getInstance(this).cancelAllWorkByTag("periodicLuWorkRequest");
-        Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED,false);
+        Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
     }
 
     /**
