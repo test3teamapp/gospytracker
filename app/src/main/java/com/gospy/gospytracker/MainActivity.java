@@ -141,7 +141,7 @@ public class MainActivity extends FragmentActivity implements
                     @Override
                     public void onComplete(@NonNull Task<InstanceIdResult> task) {
                         if (!task.isSuccessful()) {
-                            Log.w(TAG, "getInstanceId failed", task.getException());
+                            Log.i(TAG, "getInstanceId failed", task.getException());
                             return;
                         }
 
@@ -150,15 +150,15 @@ public class MainActivity extends FragmentActivity implements
 
                         // Log and toast
                         String msg = getString(R.string.msg_token_fmt, token);
-                        Log.d(TAG, msg);
+                        Log.i(TAG, msg);
                         Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
                     }
                 });
         // [END retrieve_current_token]
 
-        // firebase notiification channel
+        // firebase notification channel -- Οβσολετε. We handle the full message in the FBMessageService class
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+       /* if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Create channel to show notifications.
             String channelId = getString(R.string.default_notification_channel_id);
             String channelName = getString(R.string.default_notification_channel_name);
@@ -166,7 +166,7 @@ public class MainActivity extends FragmentActivity implements
                     getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(new NotificationChannel(channelId,
                     channelName, NotificationManager.IMPORTANCE_LOW));
-        }
+        }*/
 
         // If a notification message is tapped, any data accompanying the notification
         // message is available in the intent extras. In this sample the launcher
@@ -177,12 +177,12 @@ public class MainActivity extends FragmentActivity implements
         //
         // Handle possible data accompanying notification message.
         // [START handle_data_extras]
-        if (getIntent().getExtras() != null) {
+       /* if (getIntent().getExtras() != null) {
             for (String key : getIntent().getExtras().keySet()) {
                 Object value = getIntent().getExtras().get(key);
-                Log.d(TAG, "Key: " + key + " Value: " + value);
+                Log.i(TAG, "Key: " + key + " Value: " + value);
             }
-        }
+        }*/
         // [END handle_data_extras]
 
     }
