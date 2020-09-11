@@ -254,7 +254,7 @@ public class MainActivity extends FragmentActivity implements
                 .build();
 
         PeriodicWorkRequest luRequest =
-                new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES)
+                new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES) // can not be less than 15 minuts. this 2 minutes setting is worthless
                         // Constraints
                         .setConstraints(constraints)
                         // tag fro removing the work if needed

@@ -318,26 +318,36 @@ public class Utils {
      * Post location data to server
      */
     public static void postLocationData(Context ctx, String url) {
-        // Instantiate the RequestQueue.
-        RequestQueue queue = RequestQueueSingleton.getInstance(ctx).
-                getRequestQueue();
 
-        // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
+        try {
+            // Instantiate the RequestQueue.
+            RequestQueue queue = RequestQueueSingleton.getInstance(ctx).
+                    getRequestQueue();
+
+            // Request a string response from the provided URL.
+            if (Utils.isNetwork(ctx)) {
+                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                        new Response.Listener<String>() {
+                            @Override
+                            public void onResponse(String response) {
+                                Log.i(TAG, response);
+                            }
+                        }, new Response.ErrorListener() {
                     @Override
-                    public void onResponse(String response) {
-                        Log.i(TAG, response);
+                    public void onErrorResponse(VolleyError error) {
+                        Log.i(TAG, error.toString());
                     }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.i(TAG, error.toString());
-            }
-        });
+                });
 
-        // Add the request to the RequestQueue.
-        queue.add(stringRequest);
+                // Add the request to the RequestQueue.
+                queue.add(stringRequest);
+                //queue.start();
+            } else {
+                Log.i(TAG, "No network");
+            }
+        }catch (Exception exc){
+            exc.printStackTrace();
+        }
     }
 
 }

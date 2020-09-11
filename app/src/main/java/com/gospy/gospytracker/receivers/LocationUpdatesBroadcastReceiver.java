@@ -82,39 +82,16 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
                             //final Location  finalLocation = location;
                             try {
                                 String jsonData = Utils.getLocationResultJson(context, location);
-                                String urlString = "http://158.101.171.124:8080/api/v1/user/" +
+                                String urlString = "http://" + Utils.getSPStringValue(context,Utils.KEY_SERVER_IP) +
+                                        ":8080/api/v1/user/" +
                                 URLEncoder.encode(Utils.getSPStringValue(context,Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") + "/jsonload/" +
                                         URLEncoder.encode(jsonData,"UTF-8") + "?lat=" + location.getLatitude() +
                                                                         "&lng="+ location.getLongitude();
                                 //String urlString = "http://192.168.1.5:8080/api/v1/user/" +
                                 //        Utils.getDeviceAppUID() + "/jsonload/" + jsonData + "?lat=" + location.getLatitude() +
-                                //        "&lng="+ location.getLongitude();
-                                // Get a RequestQueue
+                                //        "&lng="+ location.getLongitude()
+                                Utils.postLocationData(context,urlString);
 
-                                RequestQueue queue = RequestQueueSingleton.getInstance(context).
-                                        getRequestQueue();
-
-                                // Request a string response from the provided URL.
-                                if (Utils.isNetwork(context)) {
-                                    StringRequest stringRequest = new StringRequest(Request.Method.POST, urlString,
-                                            new Response.Listener<String>() {
-                                                @Override
-                                                public void onResponse(String response) {
-                                                    Log.i(TAG, response);
-                                                }
-                                            }, new Response.ErrorListener() {
-                                        @Override
-                                        public void onErrorResponse(VolleyError error) {
-                                            Log.i(TAG, error.toString());
-                                        }
-                                    });
-
-                                    // Add the request to the RequestQueue.
-                                    queue.add(stringRequest);
-                                    //queue.start();
-                                }else {
-                                    Log.i(TAG,"No network");
-                                }
                             } catch (JSONException | UnsupportedEncodingException e) {
                                 e.printStackTrace();
                             }
