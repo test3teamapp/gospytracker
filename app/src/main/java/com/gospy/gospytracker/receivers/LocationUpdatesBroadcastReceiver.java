@@ -23,13 +23,7 @@ import android.location.Location;
 import android.os.PowerManager;
 import android.util.Log;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
 import com.google.android.gms.location.LocationResult;
-import com.gospy.gospytracker.utils.RequestQueueSingleton;
 import com.gospy.gospytracker.utils.Utils;
 
 import org.json.JSONException;
@@ -90,16 +84,16 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
                                 //String urlString = "http://192.168.1.5:8080/api/v1/user/" +
                                 //        Utils.getDeviceAppUID() + "/jsonload/" + jsonData + "?lat=" + location.getLatitude() +
                                 //        "&lng="+ location.getLongitude()
-                                Utils.postLocationData(context,urlString);
+                                Utils.postDataToServer(context,urlString);
 
                             } catch (JSONException | UnsupportedEncodingException e) {
                                 e.printStackTrace();
                             }
                         }
                     }
-                    Utils.setLocationUpdatesResult(context, locations);
+                    Utils.storeSPLocationUpdatesResult(context, locations);
                     //Utils.sendNotification(context, Utils.getLocationResultTitle(context, locations));
-                    Log.i(TAG, Utils.getLocationUpdatesResult(context));
+                    Log.i(TAG, Utils.getSPLocationUpdatesResult(context));
                     if (mWakeLockForLU != null){
                         if (mWakeLockForLU.isHeld()){
                             mWakeLockForLU.release();

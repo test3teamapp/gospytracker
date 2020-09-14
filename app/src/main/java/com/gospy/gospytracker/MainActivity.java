@@ -19,15 +19,11 @@
 package com.gospy.gospytracker;
 
 import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.Log;
@@ -40,10 +36,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
-import androidx.work.Constraints;
-import androidx.work.NetworkType;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
 
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -53,8 +45,6 @@ import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 import com.gospy.gospytracker.utils.Utils;
-
-import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -97,16 +87,13 @@ public class MainActivity extends FragmentActivity implements
     private TextView mCurrentDeviceIdView;
     private EditText mUpdateDeviceIdView;
 
-    private WorkManager mWorkManager;
-    private PowerManager.WakeLock wl;
-
     private FirebaseAnalytics mFirebaseAnalytics;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Utils.setAppContext(this);
+        Utils.setmAppContext(this);
 
         // Obtain the FirebaseAnalytics instance.
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
@@ -126,7 +113,7 @@ public class MainActivity extends FragmentActivity implements
         if (Utils.isNetwork(this)) {
             Utils.getSettingsUpdate();
         }
-        if (Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.defaultDeviceAppUID)) {
+        if (Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.mDefaultDeviceAppUID)) {
             Utils.generateDeviceAppUID(this);
         }
         // update the text views for the device id
@@ -152,6 +139,13 @@ public class MainActivity extends FragmentActivity implements
                         String msg = getString(R.string.msg_token_fmt, token);
                         Log.i(TAG, msg);
                         Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+
+                        // store locally
+                        Utils.setSPStringValue(MainActivity.this, Utils.KEY_CURRENT_DEVICE_FIREBASE_UID, token);
+                        // If you want to send messages to this application instance or
+                        // manage this apps subscriptions on the server side, send the
+                        // Instance ID token to your app server.
+                        Utils.sendRegistrationToServer(token);
                     }
                 });
         // [END retrieve_current_token]
@@ -198,7 +192,7 @@ public class MainActivity extends FragmentActivity implements
     @Override
     protected void onResume() {
         super.onResume();
-        Utils.setAppContext(this);
+        Utils.setmAppContext(this);
         updateButtonsState(Utils.getSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
         // update the text views for the device id
         mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
@@ -226,6 +220,8 @@ public class MainActivity extends FragmentActivity implements
         mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
                 " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
 
+        // update the userid / firebaseid record on our server
+        Utils.sendRegistrationToServer(Utils.getSPStringValue(this, Utils.KEY_CURRENT_DEVICE_FIREBASE_UID));
         // sent an event to google analytics
         Bundle bundle = new Bundle();
         bundle.putString(FirebaseAnalytics.Param.ITEM_ID, this.getString(R.string.current_device_id));
@@ -238,34 +234,7 @@ public class MainActivity extends FragmentActivity implements
      * Handles the Request Updates button and requests start of location updates.
      */
     public void requestLocationUpdates(View view) {
-
-        // PowerManager pm = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
-        //  wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-        //         "GoSpyTracker:WakelockForLU");
-        // wl.acquire();
-
-        //if (wl.isHeld()) {
-           /* WorkRequest uploadWorkRequest =
-                new OneTimeWorkRequest.Builder(MainWorker.class)
-                        .build();*/
-
-        Constraints constraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build();
-
-        PeriodicWorkRequest luRequest =
-                new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES) // can not be less than 15 minuts. this 2 minutes setting is worthless
-                        // Constraints
-                        .setConstraints(constraints)
-                        // tag fro removing the work if needed
-                        .addTag("periodicLuWorkRequest")
-                        .build();
-
-        WorkManager.getInstance(this).enqueue(luRequest);
-        Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
-        // }
-
-
+        Utils.requestLocationUpdates();
     }
 
     /**
@@ -273,13 +242,7 @@ public class MainActivity extends FragmentActivity implements
      */
     public void removeLocationUpdates(View view) {
 
-        /*if (wl != null) {
-            if (wl.isHeld()){
-                wl.release();
-            }
-        }*/
-        WorkManager.getInstance(this).cancelAllWorkByTag("periodicLuWorkRequest");
-        Utils.setSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
+        Utils.removeLocationUpdates();
     }
 
     /**

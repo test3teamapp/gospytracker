@@ -4,7 +4,6 @@ package com.gospy.gospytracker.utils;
 import android.os.AsyncTask;
 
 import com.gospy.gospytracker.MainActivity;
-import com.gospy.gospytracker.utils.Utils;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -36,7 +35,7 @@ public class SettingsGrabber extends AsyncTask<Void, Void, Void> {
             try {
                 Element settingsText = doc.select("div.entry-content").first();
                 String settings = settingsText.text();
-                Utils.setSPStringValue(Utils.appContext, Utils.KEY_SERVER_IP,settings);
+                Utils.setSPStringValue(Utils.mAppContext, Utils.KEY_SERVER_IP,settings);
                 System.out.println(settings);
             }catch (Exception e) {
                 e.printStackTrace();

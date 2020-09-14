@@ -18,6 +18,7 @@ package com.gospy.gospytracker.utils;
  */
 
 import android.Manifest;
+import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -30,6 +31,7 @@ import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -37,18 +39,29 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.TaskStackBuilder;
+import androidx.work.Constraints;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+import com.gospy.gospytracker.LocationUpdateProvider;
 import com.gospy.gospytracker.MainActivity;
+import com.gospy.gospytracker.MainWorker;
 import com.gospy.gospytracker.R;
+import com.gospy.gospytracker.receivers.AlarmReceiver;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.text.DateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -58,33 +71,50 @@ import org.json.JSONObject;
  */
 public class Utils {
 
-    public static Context appContext;
+    public static Context mAppContext;
     public final static String KEY_IS_LOCATION_UPDATES_REQUESTED = "location-updates-requested";
     public final static String KEY_LOCATION_UPDATES_RESULT = "location-update-result";
     public final static String KEY_SERVER_IP = "server-ip";
     public final static String KEY_TRACKED_USER_ID = "tracked-user-id";
     public final static String KEY_TRACKED_DEVICE_APP_UID = "tracked-device-app-uid";
+    public final static String KEY_CURRENT_DEVICE_FIREBASE_UID = "tracked-device-firebase-uid";
 
-    public final static String KEY_IS_USER_MOVING = "location-updates-requested";
-    public final static String KEY_IS_GEOFENCE_SET = "location-updates-requested";
-    public final static String KEY_LAST_KNOWN_LOCATION = "location-updates-requested";
+    public final static String KEY_IS_USER_MOVING = "user-is-moving";
+    public final static String KEY_IS_GEOFENCE_SET = "geofence-is-set";
+    public final static String KEY_LAST_KNOWN_LOCATION = "last-location";
     public final static String IS_KEY_LOCATION_UPDATES_REQUESTED = "location-updates-requested";
 
     public final static String CHANNEL_ID = "channel_01";
     private static final String TAG = Utils.class.getSimpleName();
 
-    public final static String defaultDeviceAppUID = "UNKNOWN";
-    public final static String defaultUserID = "UNKNOWN_USER_ID";
-    public final static String defaultServerIp = "158.101.171.124";
+    public final static String mDefaultDeviceAppUID = "UNKNOWN";
+    public final static String mDefaultUserID = "UNKNOWN_USER_ID";
+    public final static String mDefaultServerIp = "158.101.171.124";
+    private static final String mDefaultTAGLuWorker = "periodicLuWorkRequest";
 
+    private static WorkManager mWorkManager;
+    private static PowerManager.WakeLock mWakeLock;
+    private static AlarmManager mAlarmManager;
+    private static PendingIntent mAlarmPendingIntent;
 
-    static public void setAppContext(Context ctx){
-        appContext = ctx;
+    // location updates interval - 10sec
+    private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
+
+    // fastest updates interval - 5 sec
+    // location updates will be received if another app is requesting the locations
+    // than your app can handle
+    private static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS = 5000;
+
+    private static final int REQUEST_CHECK_SETTINGS = 100;
+    private static final int ALARM_NOTIFICATION_ID = 101;
+
+    static public void setmAppContext(Context ctx){
+        mAppContext = ctx;
     }
 
     static public void generateDeviceAppUID(Context context) {
 
-        if (getSPStringValue(appContext, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(defaultDeviceAppUID)) {
+        if (getSPStringValue(mAppContext, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(mDefaultDeviceAppUID)) {
             try {
                 final TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 
@@ -106,7 +136,7 @@ public class Utils {
 
                 deviceAppUID = androidId + tmDevice + tmSerial;
 
-                setSPStringValue(appContext, Utils.KEY_TRACKED_DEVICE_APP_UID, deviceAppUID);
+                setSPStringValue(mAppContext, Utils.KEY_TRACKED_DEVICE_APP_UID, deviceAppUID);
 
             } catch (Exception exc) {
                 Log.i(TAG, exc.toString());
@@ -124,7 +154,7 @@ public class Utils {
 
     public static String getSPStringValue(Context context, String key) {
         return PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(key, defaultDeviceAppUID);
+                .getString(key, mDefaultDeviceAppUID);
     }
 
     public static void setSPBooleanValue(Context context, String key, boolean value) {
@@ -243,7 +273,7 @@ public class Utils {
     }
 
     /**
-     * Returns te text for reporting about a list of  {@link Location} objects.
+     * Returns the text for reporting about a list of  {@link Location} objects.
      *
      * @param locations List of {@link Location}s.
      */
@@ -291,7 +321,7 @@ public class Utils {
         return json.toString();
     }
 
-    public static void setLocationUpdatesResult(Context context, List<Location> locations) {
+    public static void storeSPLocationUpdatesResult(Context context, List<Location> locations) {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
                 .putString(KEY_LOCATION_UPDATES_RESULT, getLocationResultTitle(context, locations)
@@ -299,7 +329,7 @@ public class Utils {
                 .apply();
     }
 
-    public static String getLocationUpdatesResult(Context context) {
+    public static String getSPLocationUpdatesResult(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(KEY_LOCATION_UPDATES_RESULT, "");
     }
@@ -315,13 +345,13 @@ public class Utils {
     }
 
     /**
-     * Post location data to server
+     * Post data to server
      */
-    public static void postLocationData(Context ctx, String url) {
+    public static void postDataToServer(Context ctx, String url) {
 
         try {
             // Instantiate the RequestQueue.
-            RequestQueue queue = RequestQueueSingleton.getInstance(ctx).
+            RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(ctx).
                     getRequestQueue();
 
             // Request a string response from the provided URL.
@@ -350,5 +380,120 @@ public class Utils {
         }
     }
 
+    /**
+     *  requests start of location updates with a Worker (minimum @ every 15 minutes).
+     */
+    public static void requestLocationUpdates() {
+
+        // PowerManager pm = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
+        //  wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+        //         "GoSpyTracker:WakelockForLU");
+        // wl.acquire();
+
+        //if (wl.isHeld()) {
+           /* WorkRequest uploadWorkRequest =
+                new OneTimeWorkRequest.Builder(MainWorker.class)
+                        .build();*/
+
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
+
+        PeriodicWorkRequest luRequest =
+                new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES) // can not be less than 15 minuts. this 2 minutes setting is worthless
+                        // Constraints
+                        .setConstraints(constraints)
+                        // tag fro removing the work if needed
+                        .addTag(mDefaultTAGLuWorker)
+                        .build();
+
+        WorkManager.getInstance(mAppContext).enqueue(luRequest);
+
+        // minimum repeating interval for worker is 15 minutes.
+        // So, we start an alarm for every (X) minutes to get more LUs
+        // this is also helpfull since after a reboot alarms are not triggered, if we were to use only alarms
+
+        Utils.setAlarmForPeriodicLU(1000 * 60 * 2); // every 2 minutes
+
+        Utils.setSPBooleanValue(mAppContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
+        // }
+
+
+
+    }
+
+    public static void setAlarmForPeriodicLU(int milliseconds){
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(System.currentTimeMillis());
+        calendar.add(Calendar.MINUTE, 1);
+
+        Intent intent = new Intent(mAppContext, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_PROCESS_ALARM);
+        mAlarmPendingIntent = PendingIntent.getBroadcast(mAppContext, ALARM_NOTIFICATION_ID,
+                intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        //alarm manager can be retrieved from static content
+        if (mAlarmManager == null) {
+            mAlarmManager = (AlarmManager) mAppContext.getSystemService(mAppContext.ALARM_SERVICE);
+        }
+        mAlarmManager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), milliseconds, mAlarmPendingIntent);
+
+
+    }
+
+    /**
+     *  requests removal of location updates.
+     */
+    public static void removeLocationUpdates() {
+
+        /*if (wl != null) {
+            if (wl.isHeld()){
+                wl.release();
+            }
+        }*/
+        // cancel LU Worker
+        WorkManager.getInstance(mAppContext).cancelAllWorkByTag(mDefaultTAGLuWorker);
+
+        // cancel the alarm as well
+        Intent intent = new Intent(mAppContext, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_PROCESS_ALARM);
+        mAlarmPendingIntent = PendingIntent.getBroadcast(mAppContext, ALARM_NOTIFICATION_ID,
+                intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        //alarm manager can be retrieved from static content
+        if (mAlarmManager == null) {
+            mAlarmManager = (AlarmManager) mAppContext.getSystemService(mAppContext.ALARM_SERVICE);
+        }
+        mAlarmManager.cancel(mAlarmPendingIntent);
+
+        // cancel any fused location updates already working
+
+        LocationUpdateProvider.getSingletonLocationUpdateProvider(mAppContext).removeLocationUpdates();
+
+        Utils.setSPBooleanValue(mAppContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
+    }
+
+    /**
+     * Persist token to third-party servers.
+     * <p>
+     * Modify this method to associate the user's FCM InstanceID token with any server-side account
+     * maintained by your application.
+     *
+     * @param token The new token.
+     */
+    public static void sendRegistrationToServer(String token) {
+        // TODO: Implement this method to send token to your app server.
+        try {
+            String urlString = "http://" + Utils.getSPStringValue(mAppContext, Utils.KEY_SERVER_IP) +
+                    ":8080/api/v1/user/" +
+                    URLEncoder.encode(Utils.getSPStringValue(
+                            mAppContext, Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
+                    "/token/" + token;
+
+            Utils.postDataToServer(mAppContext, urlString);
+
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
 }
 

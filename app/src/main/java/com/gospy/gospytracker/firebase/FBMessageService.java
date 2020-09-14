@@ -9,21 +9,32 @@ import android.content.Intent;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
+
 import androidx.core.app.NotificationCompat;
+
 import android.util.Log;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.gospy.gospytracker.MainActivity;
 import com.gospy.gospytracker.R;
+import com.gospy.gospytracker.utils.Utils;
 
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
+
+import org.json.JSONException;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 
 public class FBMessageService extends FirebaseMessagingService {
 
 
     private static final String TAG = "FBMessageService";
+    private static final String mMsgCommandTRIGGER_LU = "TRIGGER_LU";
+    private static final String mMsgCommandSTART_TRACKING = "START_TRACKING";
+    private static final String mMsgCommandSTOP_TRACKING = "STOP_TRACKING";
 
     /**
      * Called when message is received.
@@ -53,30 +64,30 @@ public class FBMessageService extends FirebaseMessagingService {
         // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
         Log.i(TAG, "From: " + remoteMessage.getFrom());
 
-        //TODO
-        //FOR NOW JUST TRIGGER LU WHATEVER THE MESSAGE IS
-        //
-        scheduleJob();
         // Check if message contains a data payload.
 
-//        if (remoteMessage.getData().size() > 0) {
-//            Log.i(TAG, "Message data payload: " + remoteMessage.getData());
-//
-//            if (/* Check if data needs to be processed by long running job */ true) {
-//                // For long-running tasks (10 seconds or more) use WorkManager.
-//                scheduleJob();
-//            } else {
-//                // Handle message within 10 seconds
-//                handleNow();
-//            }
-//
-//        }
+        if (remoteMessage.getData().size() > 0) {
+            Log.i(TAG, "Message data payload: " + remoteMessage.getData());
+
+
+            if (remoteMessage.getData().containsKey(mMsgCommandTRIGGER_LU)) {
+                // For long-running tasks (10 seconds or more) use WorkManager.
+                scheduleJob();
+            } else if (remoteMessage.getData().containsKey(mMsgCommandSTART_TRACKING)) {
+                // Handle message within 10 seconds
+                //handleNow();
+                Utils.requestLocationUpdates();
+            } else if (remoteMessage.getData().containsKey(mMsgCommandSTOP_TRACKING)) {
+                Utils.removeLocationUpdates();
+            }
+
+        }
 
         // Check if message contains a notification payload.
         if (remoteMessage.getNotification() != null) {
             Log.i(TAG, "Message Notification Body: " + remoteMessage.getNotification().getBody());
 
-            sendNotification( remoteMessage.getNotification().getBody());
+            sendNotification(remoteMessage.getNotification().getBody());
         }
 
         // Also if you intend on generating your own notifications as a result of a received FCM
@@ -96,10 +107,12 @@ public class FBMessageService extends FirebaseMessagingService {
     public void onNewToken(String token) {
         Log.i(TAG, "Refreshed token: " + token);
 
+        // store locally
+        Utils.setSPStringValue(super.getApplicationContext(), Utils.KEY_CURRENT_DEVICE_FIREBASE_UID, token);
         // If you want to send messages to this application instance or
         // manage this apps subscriptions on the server side, send the
         // Instance ID token to your app server.
-        sendRegistrationToServer(token);
+        Utils.sendRegistrationToServer(token);
     }
     // [END on_new_token]
 
@@ -121,17 +134,6 @@ public class FBMessageService extends FirebaseMessagingService {
         Log.d(TAG, "Short lived task is done.");
     }
 
-    /**
-     * Persist token to third-party servers.
-     *
-     * Modify this method to associate the user's FCM InstanceID token with any server-side account
-     * maintained by your application.
-     *
-     * @param token The new token.
-     */
-    private void sendRegistrationToServer(String token) {
-        // TODO: Implement this method to send token to your app server.
-    }
 
     /**
      * Create and show a simple notification containing the received FCM message.

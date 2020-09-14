@@ -18,21 +18,21 @@ public class LocationUpdateProvider {
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
      */
-    private static final long UPDATE_INTERVAL = 60000; // Every 60 seconds.
+    private static final long UPDATE_INTERVAL = 40000; // Every 40 seconds.
 
     /**
      * The fastest rate for active location updates. Updates will never be more frequent
      * than this value, but they may be less frequent.
      */
-    private static final long FASTEST_UPDATE_INTERVAL = 30000; // Every 30 seconds
+    private static final long FASTEST_UPDATE_INTERVAL = 20000; // Every 20 seconds
 
     /**
      * The max time before batched results are delivered by location services. Results may be
      * delivered sooner than this interval.
      */
     private static final long MAX_WAIT_TIME = UPDATE_INTERVAL * 1; // Every 1 minute.
-    private static LocationUpdateProvider singletonObject = null;
-    private static Context appContext;
+    private static LocationUpdateProvider mSingletonObject = null;
+    private static Context mAppContext;
     /**
      * Stores parameters for requests to the FusedLocationProviderApi.
      */
@@ -44,19 +44,17 @@ public class LocationUpdateProvider {
     Intent mIntent = null;
 
     private LocationUpdateProvider(Context mainView) {
-        if (mFusedLocationClient == null) {
-            mFusedLocationClient = LocationServices.getFusedLocationProviderClient(mainView);
-        }
-        createLocationRequest();
+        mAppContext = mainView;
+
     }
 
     public static LocationUpdateProvider getSingletonLocationUpdateProvider(Context mainView) {
-        appContext = mainView;
-        if (singletonObject == null) {
-            singletonObject = new LocationUpdateProvider(mainView);
+        mAppContext = mainView;
+        if (mSingletonObject == null) {
+            mSingletonObject = new LocationUpdateProvider(mainView);
         }
 
-        return singletonObject;
+        return mSingletonObject;
     }
 
 
@@ -90,7 +88,7 @@ public class LocationUpdateProvider {
         // application will never receive updates faster than this value.
         mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL);
 
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
         // Sets the maximum time when batched location updates are delivered. Updates may be
         // delivered sooner than this interval.
@@ -110,40 +108,55 @@ public class LocationUpdateProvider {
 //        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         if (mIntent == null) {
-            mIntent = new Intent(appContext, LocationUpdatesBroadcastReceiver.class);
+            mIntent = new Intent(mAppContext, LocationUpdatesBroadcastReceiver.class);
         }
         mIntent.setAction(LocationUpdatesBroadcastReceiver.ACTION_PROCESS_UPDATES);
-        return PendingIntent.getBroadcast(appContext, 0, mIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return PendingIntent.getBroadcast(mAppContext, 0, mIntent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     /**
      * Handles the Request Updates button and requests start of location updates.
+     * Only access it through the singleton object
      */
     public void requestLocationUpdates() {
-        try {
-            PowerManager pm = (PowerManager) appContext.getSystemService(Context.POWER_SERVICE);
-            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                    "GoSpyTracker:WakelockForLU");
-            wl.acquire();
 
-            if (wl.isHeld()) {
-                Log.i(TAG, "Starting location updates");
-                LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
-                //Utils.setSPBooleanValue(mainContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED,true);
-                mFusedLocationClient.requestLocationUpdates(mLocationRequest, getPendingIntent());
+        if (mFusedLocationClient == null) {
+            mFusedLocationClient = LocationServices.getFusedLocationProviderClient(mAppContext);
+        }
+
+        createLocationRequest();
+
+        if (mFusedLocationClient != null) {
+            try {
+                PowerManager pm = (PowerManager) mAppContext.getSystemService(Context.POWER_SERVICE);
+                PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                        "GoSpyTracker:WakelockForLU");
+                wl.acquire();
+
+                if (wl.isHeld()) {
+                    Log.i(TAG, "Starting location updates");
+                    LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
+
+                    mFusedLocationClient.requestLocationUpdates(mLocationRequest, getPendingIntent());
+                }
+            } catch (SecurityException e) {
+
+                e.printStackTrace();
             }
-        } catch (SecurityException e) {
-            //Utils.setSPBooleanValue(mainContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
-            e.printStackTrace();
         }
     }
 
     /**
-     * Handles the Remove Updates button, and requests removal of location updates.
+     * requests removal of location updates from the fused lu client.
+     * Only access it through the singleton object
      */
     public void removeLocationUpdates() {
-        Log.i(TAG, "Removing location updates");
-        //Utils.setSPBooleanValue(mainContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED,false);
-        mFusedLocationClient.removeLocationUpdates(getPendingIntent());
+        Log.i(TAG, "Removing location updates from fused client");
+        if (mFusedLocationClient != null) {
+            if (mIntent != null) {
+                mFusedLocationClient.removeLocationUpdates(PendingIntent.getBroadcast(mAppContext, 0, mIntent, PendingIntent.FLAG_CANCEL_CURRENT));
+                Log.i(TAG, "Removed location updates");
+            }
+        }
     }
 }
