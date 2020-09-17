@@ -207,6 +207,7 @@ public class MainActivity extends FragmentActivity implements
     protected void onStop() {
         PreferenceManager.getDefaultSharedPreferences(this)
                 .unregisterOnSharedPreferenceChangeListener(this);
+        Utils.setmAppContext(this);
         super.onStop();
     }
 
@@ -228,6 +229,8 @@ public class MainActivity extends FragmentActivity implements
         bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
         bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "string");
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+
+        Utils.sendPingToServer(Utils.PING_REASONS.PING_USERID_CHANGED);
     }
 
     /**

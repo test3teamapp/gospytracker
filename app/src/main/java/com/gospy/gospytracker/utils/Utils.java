@@ -97,6 +97,38 @@ public class Utils {
     private static AlarmManager mAlarmManager;
     private static PendingIntent mAlarmPendingIntent;
 
+    //ping reasons
+
+    /**
+     * @author The Elite Gentleman
+     *
+     */
+    public enum PING_REASONS {
+        PING_TRIGGERLU("TRIGGERLU"),
+        PING_STOPTRACKING("STOPTRACKING"),
+        PING_STARTTRACKING("STARTTRACKING"),
+        PING_USERID_CHANGED("USERIDCHANGED"),
+        PING_HI("HI")
+        ;
+
+        private final String text;
+
+        /**
+         * @param text
+         */
+        PING_REASONS(final String text) {
+            this.text = text;
+        }
+
+        /* (non-Javadoc)
+         * @see java.lang.Enum#toString()
+         */
+        @Override
+        public String toString() {
+            return text;
+        }
+    }
+
     // location updates interval - 10sec
     private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
 
@@ -418,7 +450,7 @@ public class Utils {
         Utils.setSPBooleanValue(mAppContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
         // }
 
-
+        Utils.sendPingToServer(Utils.PING_REASONS.PING_STARTTRACKING);
 
     }
 
@@ -470,6 +502,8 @@ public class Utils {
         LocationUpdateProvider.getSingletonLocationUpdateProvider(mAppContext).removeLocationUpdates();
 
         Utils.setSPBooleanValue(mAppContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
+
+        Utils.sendPingToServer(Utils.PING_REASONS.PING_STOPTRACKING);
     }
 
     /**
@@ -490,6 +524,20 @@ public class Utils {
                     "/token/" + token;
 
             Utils.postDataToServer(mAppContext, urlString);
+
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void sendPingToServer(PING_REASONS reason){
+
+        try {
+            String urlString = "http://" + Utils.getSPStringValue(mAppContext,Utils.KEY_SERVER_IP) +
+                    ":8080/api/v1/user/" +
+                    URLEncoder.encode(Utils.getSPStringValue(mAppContext,Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
+                    "/reason/" + reason.toString();
+            Utils.postDataToServer(mAppContext,urlString);
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();

@@ -14,7 +14,7 @@ import java.io.IOException;
 public class SettingsGrabber extends AsyncTask<Void, Void, Void> {
     //New class for the Asynctask, where the data will be fetched in the background
     private static Document doc = null;
-    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String TAG = SettingsGrabber.class.getSimpleName();
     @Override
     protected Void doInBackground(Void... params) {
         // NO CHANGES TO UI TO BE DONE HERE

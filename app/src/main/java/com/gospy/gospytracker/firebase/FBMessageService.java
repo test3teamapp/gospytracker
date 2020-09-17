@@ -64,6 +64,8 @@ public class FBMessageService extends FirebaseMessagingService {
         // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
         Log.i(TAG, "From: " + remoteMessage.getFrom());
 
+        Utils.setmAppContext(super.getApplicationContext());
+
         // Check if message contains a data payload.
 
         if (remoteMessage.getData().size() > 0) {
@@ -72,12 +74,14 @@ public class FBMessageService extends FirebaseMessagingService {
 
             if (remoteMessage.getData().containsKey(mMsgCommandTRIGGER_LU)) {
                 // For long-running tasks (10 seconds or more) use WorkManager.
+                Utils.sendPingToServer(Utils.PING_REASONS.PING_TRIGGERLU);
                 scheduleJob();
             } else if (remoteMessage.getData().containsKey(mMsgCommandSTART_TRACKING)) {
                 // Handle message within 10 seconds
                 //handleNow();
                 Utils.requestLocationUpdates();
             } else if (remoteMessage.getData().containsKey(mMsgCommandSTOP_TRACKING)) {
+
                 Utils.removeLocationUpdates();
             }
 

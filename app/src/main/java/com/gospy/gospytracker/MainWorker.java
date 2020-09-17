@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters;
 
 import com.gospy.gospytracker.receivers.AlarmReceiver;
 import com.gospy.gospytracker.receivers.LocationUpdatesBroadcastReceiver;
+import com.gospy.gospytracker.utils.Utils;
 
 import java.util.Calendar;
 
@@ -36,6 +37,7 @@ public class MainWorker extends Worker {
 
         LocationUpdateProvider.getSingletonLocationUpdateProvider(super.getApplicationContext()).requestLocationUpdates();
 
+        Utils.sendPingToServer(Utils.PING_REASONS.PING_HI);
         // Indicate whether the work finished successfully with the Result
         return Result.success();
     }
