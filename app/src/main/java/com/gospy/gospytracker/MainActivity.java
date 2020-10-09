@@ -93,10 +93,10 @@ public class MainActivity extends FragmentActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Utils.setmAppContext(this);
+
 
         // Obtain the FirebaseAnalytics instance.
-        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(Spyapp.getInstance());
 
         mRequestUpdatesButton = (Button) findViewById(R.id.request_updates_button);
         mRemoveUpdatesButton = (Button) findViewById(R.id.remove_updates_button);
@@ -110,15 +110,15 @@ public class MainActivity extends FragmentActivity implements
             requestPermissions();
         }
 
-        if (Utils.isNetwork(this)) {
+        if (Utils.isNetwork()) {
             Utils.getSettingsUpdate();
         }
-        if (Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.mDefaultDeviceAppUID)) {
-            Utils.generateDeviceAppUID(this);
+        if (Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.mDefaultDeviceAppUID)) {
+            Utils.generateDeviceAppUID();
         }
         // update the text views for the device id
-        mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
+        mCurrentDeviceIdView.setText(Spyapp.getContext().getString(R.string.current_device_id) +
+                " : " + Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID));
 
 
         // Get token
@@ -138,10 +138,10 @@ public class MainActivity extends FragmentActivity implements
                         // Log and toast
                         String msg = getString(R.string.msg_token_fmt, token);
                         Log.i(TAG, msg);
-                        Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(Spyapp.getContext(), msg, Toast.LENGTH_SHORT).show();
 
                         // store locally
-                        Utils.setSPStringValue(MainActivity.this, Utils.KEY_CURRENT_DEVICE_FIREBASE_UID, token);
+                        Utils.setSPStringValue(Utils.KEY_CURRENT_DEVICE_FIREBASE_UID, token);
                         // If you want to send messages to this application instance or
                         // manage this apps subscriptions on the server side, send the
                         // Instance ID token to your app server.
@@ -184,7 +184,7 @@ public class MainActivity extends FragmentActivity implements
     @Override
     protected void onStart() {
         super.onStart();
-        PreferenceManager.getDefaultSharedPreferences(this)
+        PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .registerOnSharedPreferenceChangeListener(this);
     }
 
@@ -192,12 +192,11 @@ public class MainActivity extends FragmentActivity implements
     @Override
     protected void onResume() {
         super.onResume();
-        Utils.setmAppContext(this);
-        updateButtonsState(Utils.getSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
+        updateButtonsState(Utils.getSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
         // update the text views for the device id
-        mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
-        if (Utils.isNetwork(this)) {
+        mCurrentDeviceIdView.setText(Spyapp.getContext().getString(R.string.current_device_id) +
+                " : " + Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID));
+        if (Utils.isNetwork()) {
             Utils.getSettingsUpdate();
         }
 
@@ -205,28 +204,27 @@ public class MainActivity extends FragmentActivity implements
 
     @Override
     protected void onStop() {
-        PreferenceManager.getDefaultSharedPreferences(this)
+        PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .unregisterOnSharedPreferenceChangeListener(this);
-        Utils.setmAppContext(this);
         super.onStop();
     }
 
     public void setDeviceId(View view) {
         if (this.mUpdateDeviceIdView.getText().toString().isEmpty()) {
-            Toast.makeText(this, "Please provide an identifier for the device", Toast.LENGTH_SHORT).show();
+            Toast.makeText(Spyapp.getContext(), "Please provide an identifier for the device", Toast.LENGTH_SHORT).show();
         } else {
-            Utils.setSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID, this.mUpdateDeviceIdView.getText().toString());
+            Utils.setSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID, this.mUpdateDeviceIdView.getText().toString());
         }
         // update the text views for the device id
         mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
+                " : " + Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID));
 
         // update the userid / firebaseid record on our server
-        Utils.sendRegistrationToServer(Utils.getSPStringValue(this, Utils.KEY_CURRENT_DEVICE_FIREBASE_UID));
+        Utils.sendRegistrationToServer(Utils.getSPStringValue(Utils.KEY_CURRENT_DEVICE_FIREBASE_UID));
         // sent an event to google analytics
         Bundle bundle = new Bundle();
         bundle.putString(FirebaseAnalytics.Param.ITEM_ID, this.getString(R.string.current_device_id));
-        bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, Utils.getSPStringValue(this, Utils.KEY_TRACKED_DEVICE_APP_UID));
+        bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID));
         bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "string");
         mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
 
@@ -253,27 +251,27 @@ public class MainActivity extends FragmentActivity implements
      */
     private boolean checkPermissions() {
         int fineLocationPermissionState = ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_FINE_LOCATION);
+                Spyapp.getContext(), Manifest.permission.ACCESS_FINE_LOCATION);
 
         int backgroundLocationPermissionState = ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+                Spyapp.getContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION);
 
         int coarseLocationPermissionState = ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_COARSE_LOCATION);
+                Spyapp.getContext(), Manifest.permission.ACCESS_COARSE_LOCATION);
 
         int internetPermissionState = ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.INTERNET);
+                Spyapp.getContext(), Manifest.permission.INTERNET);
 
         int phonestatePermissionState = ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.READ_PHONE_STATE);
+                Spyapp.getContext(), Manifest.permission.READ_PHONE_STATE);
 
         int networkstatePermissionState = ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_NETWORK_STATE);
+                Spyapp.getContext(), Manifest.permission.ACCESS_NETWORK_STATE);
 
         int wakelockPermissionState = ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.WAKE_LOCK);
+                Spyapp.getContext(), Manifest.permission.WAKE_LOCK);
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(Spyapp.getContext(), Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
@@ -297,37 +295,37 @@ public class MainActivity extends FragmentActivity implements
 
         boolean permissionAccessFineLocationApproved =
                 ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.ACCESS_FINE_LOCATION)
+                        Spyapp.getContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                         == PackageManager.PERMISSION_GRANTED;
 
         boolean backgroundLocationPermissionApproved =
                 ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        Spyapp.getContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                         == PackageManager.PERMISSION_GRANTED;
 
         boolean coarseLocationPermissionApproved =
                 ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                        Spyapp.getContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
                         == PackageManager.PERMISSION_GRANTED;
 
         boolean internetPermissionApproved =
                 ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.INTERNET)
+                        Spyapp.getContext(), Manifest.permission.INTERNET)
                         == PackageManager.PERMISSION_GRANTED;
 
         boolean phonestatePermissionApproved =
                 ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.READ_PHONE_STATE)
+                        Spyapp.getContext(), Manifest.permission.READ_PHONE_STATE)
                         == PackageManager.PERMISSION_GRANTED;
 
         boolean networkstatePermissionApproved =
                 ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.ACCESS_NETWORK_STATE)
+                        Spyapp.getContext(), Manifest.permission.ACCESS_NETWORK_STATE)
                         == PackageManager.PERMISSION_GRANTED;
 
         boolean wakelockPermissionApproved =
                 ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.WAKE_LOCK)
+                        Spyapp.getContext(), Manifest.permission.WAKE_LOCK)
                         == PackageManager.PERMISSION_GRANTED;
 
         boolean shouldProvideRationale =
@@ -440,7 +438,7 @@ public class MainActivity extends FragmentActivity implements
         if (s.equals(Utils.KEY_LOCATION_UPDATES_RESULT)) {
             //mLocationUpdatesResultView.setText(Utils.getLocationUpdatesResult(this));
         } else if (s.equals(Utils.KEY_IS_LOCATION_UPDATES_REQUESTED)) {
-            updateButtonsState(Utils.getSPBooleanValue(this, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
+            updateButtonsState(Utils.getSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
         }
     }
 

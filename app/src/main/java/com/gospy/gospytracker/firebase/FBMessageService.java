@@ -18,6 +18,7 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.gospy.gospytracker.MainActivity;
 import com.gospy.gospytracker.R;
+import com.gospy.gospytracker.Spyapp;
 import com.gospy.gospytracker.utils.Utils;
 
 import androidx.work.OneTimeWorkRequest;
@@ -63,8 +64,6 @@ public class FBMessageService extends FirebaseMessagingService {
         // TODO(developer): Handle FCM messages here.
         // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
         Log.i(TAG, "From: " + remoteMessage.getFrom());
-
-        Utils.setmAppContext(super.getApplicationContext());
 
         // Check if message contains a data payload.
 
@@ -112,7 +111,7 @@ public class FBMessageService extends FirebaseMessagingService {
         Log.i(TAG, "Refreshed token: " + token);
 
         // store locally
-        Utils.setSPStringValue(super.getApplicationContext(), Utils.KEY_CURRENT_DEVICE_FIREBASE_UID, token);
+        Utils.setSPStringValue(Utils.KEY_CURRENT_DEVICE_FIREBASE_UID, token);
         // If you want to send messages to this application instance or
         // manage this apps subscriptions on the server side, send the
         // Instance ID token to your app server.
@@ -127,7 +126,7 @@ public class FBMessageService extends FirebaseMessagingService {
         // [START dispatch_job]
         OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(FBMessageWorker.class)
                 .build();
-        WorkManager.getInstance(super.getApplicationContext()).beginWith(work).enqueue();
+        WorkManager.getInstance(Spyapp.getContext()).beginWith(work).enqueue();
         // [END dispatch_job]
     }
 
@@ -145,15 +144,15 @@ public class FBMessageService extends FirebaseMessagingService {
      * @param messageBody FCM message body received.
      */
     private void sendNotification(String messageBody) {
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent = new Intent(Spyapp.getContext(), MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent,
+        PendingIntent pendingIntent = PendingIntent.getActivity(Spyapp.getContext(), 0 /* Request code */, intent,
                 PendingIntent.FLAG_ONE_SHOT);
 
         String channelId = getString(R.string.default_notification_channel_id);
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         NotificationCompat.Builder notificationBuilder =
-                new NotificationCompat.Builder(this, channelId)
+                new NotificationCompat.Builder(Spyapp.getContext(), channelId)
                         .setSmallIcon(R.drawable.ic_stat_ic_notification)
                         .setContentTitle(getString(R.string.fcm_message))
                         .setContentText(messageBody)

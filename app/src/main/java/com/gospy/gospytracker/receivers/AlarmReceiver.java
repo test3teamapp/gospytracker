@@ -20,7 +20,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         //Toast.makeText(arg0, "I'm running", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "alarm received --> trigger lu ");
         // request location update
-        LocationUpdateProvider.getSingletonLocationUpdateProvider(arg0).requestLocationUpdates();
+        LocationUpdateProvider.getSingletonLocationUpdateProvider().requestLocationUpdates();
     }
 
 }

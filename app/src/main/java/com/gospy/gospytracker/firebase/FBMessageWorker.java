@@ -23,7 +23,7 @@ public class FBMessageWorker extends Worker{
         Log.i(TAG, "Performing long running task in scheduled job");
         // TODO(developer): add long running task here.
         // request location update
-        LocationUpdateProvider.getSingletonLocationUpdateProvider(super.getApplicationContext()).requestLocationUpdates();
+        LocationUpdateProvider.getSingletonLocationUpdateProvider().requestLocationUpdates();
 
         return Result.success();
     }

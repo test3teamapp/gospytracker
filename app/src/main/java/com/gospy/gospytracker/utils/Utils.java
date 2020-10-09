@@ -53,6 +53,7 @@ import com.gospy.gospytracker.LocationUpdateProvider;
 import com.gospy.gospytracker.MainActivity;
 import com.gospy.gospytracker.MainWorker;
 import com.gospy.gospytracker.R;
+import com.gospy.gospytracker.Spyapp;
 import com.gospy.gospytracker.receivers.AlarmReceiver;
 
 import java.io.UnsupportedEncodingException;
@@ -71,7 +72,6 @@ import org.json.JSONObject;
  */
 public class Utils {
 
-    public static Context mAppContext;
     public final static String KEY_IS_LOCATION_UPDATES_REQUESTED = "location-updates-requested";
     public final static String KEY_LOCATION_UPDATES_RESULT = "location-update-result";
     public final static String KEY_SERVER_IP = "server-ip";
@@ -140,19 +140,16 @@ public class Utils {
     private static final int REQUEST_CHECK_SETTINGS = 100;
     private static final int ALARM_NOTIFICATION_ID = 101;
 
-    static public void setmAppContext(Context ctx){
-        mAppContext = ctx;
-    }
 
-    static public void generateDeviceAppUID(Context context) {
+    static public void generateDeviceAppUID() {
 
-        if (getSPStringValue(mAppContext, Utils.KEY_TRACKED_DEVICE_APP_UID).equals(mDefaultDeviceAppUID)) {
+        if (getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID).equals(mDefaultDeviceAppUID)) {
             try {
-                final TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+                final TelephonyManager tm = (TelephonyManager) Spyapp.getContext().getSystemService(Context.TELEPHONY_SERVICE);
 
                 String tmDevice, tmSerial, androidId, deviceAppUID;
 
-                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.checkSelfPermission(Spyapp.getContext(), Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
                     // TODO: Consider calling
                     //    ActivityCompat#requestPermissions
                     // here to request the missing permissions, and then overriding
@@ -164,11 +161,11 @@ public class Utils {
                 }
                 tmDevice = "" + tm.getDeviceId();
                 tmSerial = "" + tm.getSimSerialNumber();
-                androidId = "" + android.provider.Settings.Secure.getString(context.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
+                androidId = "" + android.provider.Settings.Secure.getString(Spyapp.getContext().getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
 
                 deviceAppUID = androidId + tmDevice + tmSerial;
 
-                setSPStringValue(mAppContext, Utils.KEY_TRACKED_DEVICE_APP_UID, deviceAppUID);
+                setSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID, deviceAppUID);
 
             } catch (Exception exc) {
                 Log.i(TAG, exc.toString());
@@ -177,48 +174,48 @@ public class Utils {
 
     }
 
-    public static void setSPStringValue(Context context, String key,String value) {
-        PreferenceManager.getDefaultSharedPreferences(context)
+    public static void setSPStringValue(String key,String value) {
+        PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .edit()
                 .putString(key, value)
                 .apply();
     }
 
-    public static String getSPStringValue(Context context, String key) {
-        return PreferenceManager.getDefaultSharedPreferences(context)
+    public static String getSPStringValue(String key) {
+        return PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .getString(key, mDefaultDeviceAppUID);
     }
 
-    public static void setSPBooleanValue(Context context, String key, boolean value) {
-        PreferenceManager.getDefaultSharedPreferences(context)
+    public static void setSPBooleanValue(String key, boolean value) {
+        PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .edit()
                 .putBoolean(key, value)
                 .apply();
     }
 
-    public static boolean getSPBooleanValue(Context context, String key) {
-        return PreferenceManager.getDefaultSharedPreferences(context)
+    public static boolean getSPBooleanValue(String key) {
+        return PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .getBoolean(key, false);
     }
 
-    public static void setSPLongValue(Context context, String key, long value) {
-        PreferenceManager.getDefaultSharedPreferences(context)
+    public static void setSPLongValue(String key, long value) {
+        PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .edit()
                 .putLong(key, value)
                 .apply();
     }
 
-    public static long getSPLongValue(Context context, String key) {
-        return PreferenceManager.getDefaultSharedPreferences(context)
+    public static long getSPLongValue(String key) {
+        return PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .getLong(key, -1);
     }
 
 
 
 
-    public static boolean isNetwork(Context context) {
+    public static boolean isNetwork() {
 
-        ConnectivityManager cm = (ConnectivityManager) context
+        ConnectivityManager cm = (ConnectivityManager) Spyapp.getContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
         assert cm != null;
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
@@ -234,14 +231,14 @@ public class Utils {
      * Posts a notification in the notification bar when a transition is detected.
      * If the user clicks the notification, control goes to the MainActivity.
      */
-    public static void sendNotification(Context context, String notificationDetails) {
+    public static void sendNotification(String notificationDetails) {
         // Create an explicit content Intent that starts the main Activity.
-        Intent notificationIntent = new Intent(context, MainActivity.class);
+        Intent notificationIntent = new Intent(Spyapp.getContext(), MainActivity.class);
 
         notificationIntent.putExtra("from_notification", true);
 
         // Construct a task stack.
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(Spyapp.getContext());
 
         // Add the main Activity to the task stack as the parent.
         stackBuilder.addParentStack(MainActivity.class);
@@ -254,13 +251,13 @@ public class Utils {
                 stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
 
         // Get a notification builder that's compatible with platform versions >= 4
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(Spyapp.getContext());
 
         // Define the notification settings.
         builder.setSmallIcon(R.mipmap.ic_launcher)
                 // In a real app, you may want to use a library like Volley
                 // to decode the Bitmap.
-                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(),
+                .setLargeIcon(BitmapFactory.decodeResource(Spyapp.getContext().getResources(),
                         R.mipmap.ic_launcher))
                 .setColor(Color.RED)
                 .setContentTitle("Location update")
@@ -272,11 +269,11 @@ public class Utils {
 
         // Get an instance of the Notification manager
         NotificationManager mNotificationManager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                (NotificationManager) Spyapp.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
 
         // Android O requires a Notification Channel.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = context.getString(R.string.app_name);
+            CharSequence name = Spyapp.getContext().getString(R.string.app_name);
             // Create the channel for the notification
             NotificationChannel mChannel =
                     new NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_DEFAULT);
@@ -296,10 +293,10 @@ public class Utils {
     /**
      * Returns the title for reporting about a list of {@link Location} objects.
      *
-     * @param context The {@link Context}.
+     * @param locations List of {@link Location}s.
      */
-    public static String getLocationResultTitle(Context context, List<Location> locations) {
-        String numLocationsReported = context.getResources().getQuantityString(
+    public static String getLocationResultTitle(List<Location> locations) {
+        String numLocationsReported = Spyapp.getContext().getResources().getQuantityString(
                 R.plurals.num_locations_reported, locations.size(), locations.size());
         return numLocationsReported + ": " + DateFormat.getDateTimeInstance().format(new Date());
     }
@@ -309,9 +306,9 @@ public class Utils {
      *
      * @param locations List of {@link Location}s.
      */
-    private static String getLocationResultText(Context context, List<Location> locations) {
+    private static String getLocationResultText(List<Location> locations) {
         if (locations.isEmpty()) {
-            return context.getString(R.string.unknown_location);
+            return Spyapp.getContext().getString(R.string.unknown_location);
         }
         StringBuilder sb = new StringBuilder();
         for (Location location : locations) {
@@ -339,7 +336,7 @@ public class Utils {
      *
      * @param location List of {@link Location}s.
      */
-    public static String getLocationResultJson(Context context, Location location) throws JSONException {
+    public static String getLocationResultJson(Location location) throws JSONException {
 
         JSONObject json = new JSONObject();
         json.put("Lat", location.getLatitude());
@@ -353,16 +350,16 @@ public class Utils {
         return json.toString();
     }
 
-    public static void storeSPLocationUpdatesResult(Context context, List<Location> locations) {
-        PreferenceManager.getDefaultSharedPreferences(context)
+    public static void storeSPLocationUpdatesResult(List<Location> locations) {
+        PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .edit()
-                .putString(KEY_LOCATION_UPDATES_RESULT, getLocationResultTitle(context, locations)
-                        + "\n" + getLocationResultText(context, locations))
+                .putString(KEY_LOCATION_UPDATES_RESULT, getLocationResultTitle(locations)
+                        + "\n" + getLocationResultText(locations))
                 .apply();
     }
 
-    public static String getSPLocationUpdatesResult(Context context) {
-        return PreferenceManager.getDefaultSharedPreferences(context)
+    public static String getSPLocationUpdatesResult() {
+        return PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .getString(KEY_LOCATION_UPDATES_RESULT, "");
     }
 
@@ -379,15 +376,15 @@ public class Utils {
     /**
      * Post data to server
      */
-    public static void postDataToServer(Context ctx, String url) {
+    public static void postDataToServer( String url) {
 
         try {
             // Instantiate the RequestQueue.
-            RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(ctx).
+            RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(Spyapp.getContext()).
                     getRequestQueue();
 
             // Request a string response from the provided URL.
-            if (Utils.isNetwork(ctx)) {
+            if (Utils.isNetwork()) {
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                         new Response.Listener<String>() {
                             @Override
@@ -439,7 +436,7 @@ public class Utils {
                         .addTag(mDefaultTAGLuWorker)
                         .build();
 
-        WorkManager.getInstance(mAppContext).enqueue(luRequest);
+        WorkManager.getInstance(Spyapp.getContext()).enqueue(luRequest);
 
         // minimum repeating interval for worker is 15 minutes.
         // So, we start an alarm for every (X) minutes to get more LUs
@@ -447,7 +444,7 @@ public class Utils {
 
         Utils.setAlarmForPeriodicLU(1000 * 60 * 2); // every 2 minutes
 
-        Utils.setSPBooleanValue(mAppContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
+        Utils.setSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
         // }
 
         Utils.sendPingToServer(Utils.PING_REASONS.PING_STARTTRACKING);
@@ -460,13 +457,13 @@ public class Utils {
         calendar.setTimeInMillis(System.currentTimeMillis());
         calendar.add(Calendar.MINUTE, 1);
 
-        Intent intent = new Intent(mAppContext, AlarmReceiver.class);
+        Intent intent = new Intent(Spyapp.getContext(), AlarmReceiver.class);
         intent.setAction(AlarmReceiver.ACTION_PROCESS_ALARM);
-        mAlarmPendingIntent = PendingIntent.getBroadcast(mAppContext, ALARM_NOTIFICATION_ID,
+        mAlarmPendingIntent = PendingIntent.getBroadcast(Spyapp.getContext(), ALARM_NOTIFICATION_ID,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         //alarm manager can be retrieved from static content
         if (mAlarmManager == null) {
-            mAlarmManager = (AlarmManager) mAppContext.getSystemService(mAppContext.ALARM_SERVICE);
+            mAlarmManager = (AlarmManager) Spyapp.getContext().getSystemService(Spyapp.getContext().ALARM_SERVICE);
         }
         mAlarmManager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), milliseconds, mAlarmPendingIntent);
 
@@ -484,24 +481,24 @@ public class Utils {
             }
         }*/
         // cancel LU Worker
-        WorkManager.getInstance(mAppContext).cancelAllWorkByTag(mDefaultTAGLuWorker);
+        WorkManager.getInstance(Spyapp.getContext()).cancelAllWorkByTag(mDefaultTAGLuWorker);
 
         // cancel the alarm as well
-        Intent intent = new Intent(mAppContext, AlarmReceiver.class);
+        Intent intent = new Intent(Spyapp.getContext(), AlarmReceiver.class);
         intent.setAction(AlarmReceiver.ACTION_PROCESS_ALARM);
-        mAlarmPendingIntent = PendingIntent.getBroadcast(mAppContext, ALARM_NOTIFICATION_ID,
+        mAlarmPendingIntent = PendingIntent.getBroadcast(Spyapp.getContext(), ALARM_NOTIFICATION_ID,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         //alarm manager can be retrieved from static content
         if (mAlarmManager == null) {
-            mAlarmManager = (AlarmManager) mAppContext.getSystemService(mAppContext.ALARM_SERVICE);
+            mAlarmManager = (AlarmManager) Spyapp.getContext().getSystemService(Spyapp.getContext().ALARM_SERVICE);
         }
         mAlarmManager.cancel(mAlarmPendingIntent);
 
         // cancel any fused location updates already working
 
-        LocationUpdateProvider.getSingletonLocationUpdateProvider(mAppContext).removeLocationUpdates();
+        LocationUpdateProvider.getSingletonLocationUpdateProvider().removeLocationUpdates();
 
-        Utils.setSPBooleanValue(mAppContext, Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
+        Utils.setSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
 
         Utils.sendPingToServer(Utils.PING_REASONS.PING_STOPTRACKING);
     }
@@ -517,13 +514,12 @@ public class Utils {
     public static void sendRegistrationToServer(String token) {
         // TODO: Implement this method to send token to your app server.
         try {
-            String urlString = "http://" + Utils.getSPStringValue(mAppContext, Utils.KEY_SERVER_IP) +
+            String urlString = "http://" + Utils.getSPStringValue(Utils.KEY_SERVER_IP) +
                     ":8080/api/v1/user/" +
-                    URLEncoder.encode(Utils.getSPStringValue(
-                            mAppContext, Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
+                    URLEncoder.encode(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
                     "/token/" + token;
 
-            Utils.postDataToServer(mAppContext, urlString);
+            Utils.postDataToServer(urlString);
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -533,11 +529,11 @@ public class Utils {
     public static void sendPingToServer(PING_REASONS reason){
 
         try {
-            String urlString = "http://" + Utils.getSPStringValue(mAppContext,Utils.KEY_SERVER_IP) +
+            String urlString = "http://" + Utils.getSPStringValue(Utils.KEY_SERVER_IP) +
                     ":8080/api/v1/user/" +
-                    URLEncoder.encode(Utils.getSPStringValue(mAppContext,Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
+                    URLEncoder.encode(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
                     "/reason/" + reason.toString();
-            Utils.postDataToServer(mAppContext,urlString);
+            Utils.postDataToServer(urlString);
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();

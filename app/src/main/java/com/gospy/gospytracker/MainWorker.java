@@ -20,13 +20,11 @@ public class MainWorker extends Worker {
 
 
     private static final String TAG = "MainWorker";
-    private Context appContext = null;
 
     public MainWorker(
             @NonNull Context context,
             @NonNull WorkerParameters params) {
         super(context, params);
-        appContext = context;
     }
 
     @SuppressLint("MissingPermission")
@@ -35,7 +33,7 @@ public class MainWorker extends Worker {
 
         // Do the work here--in this case, upload the images.
 
-        LocationUpdateProvider.getSingletonLocationUpdateProvider(super.getApplicationContext()).requestLocationUpdates();
+        LocationUpdateProvider.getSingletonLocationUpdateProvider().requestLocationUpdates();
 
         Utils.sendPingToServer(Utils.PING_REASONS.PING_HI);
         // Indicate whether the work finished successfully with the Result

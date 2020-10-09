@@ -6,16 +6,15 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 import com.gospy.gospytracker.MainActivity;
+import com.gospy.gospytracker.Spyapp;
 
 public class VolleyHttpRequestQueueSingleton {
     private static VolleyHttpRequestQueueSingleton mInstance;
     private RequestQueue mRequestQueue;
-    private static Context mAppContext;
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private VolleyHttpRequestQueueSingleton(Context context) {
-        mAppContext = context;
         mRequestQueue = getRequestQueue();
     }
 
@@ -30,7 +29,7 @@ public class VolleyHttpRequestQueueSingleton {
         if (mRequestQueue == null) {
             // getApplicationContext() is key, it keeps you from leaking the
             // Activity or BroadcastReceiver if someone passes one in.
-            mRequestQueue = Volley.newRequestQueue(mAppContext.getApplicationContext());
+            mRequestQueue = Volley.newRequestQueue(Spyapp.getContext());
         }
         return mRequestQueue;
     }

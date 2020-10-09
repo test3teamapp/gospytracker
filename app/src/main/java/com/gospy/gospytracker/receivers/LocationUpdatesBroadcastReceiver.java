@@ -75,25 +75,25 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
                         ) {
                             //final Location  finalLocation = location;
                             try {
-                                String jsonData = Utils.getLocationResultJson(context, location);
-                                String urlString = "http://" + Utils.getSPStringValue(context,Utils.KEY_SERVER_IP) +
+                                String jsonData = Utils.getLocationResultJson(location);
+                                String urlString = "http://" + Utils.getSPStringValue(Utils.KEY_SERVER_IP) +
                                         ":8080/api/v1/user/" +
-                                URLEncoder.encode(Utils.getSPStringValue(context,Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") + "/jsonload/" +
+                                URLEncoder.encode(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") + "/jsonload/" +
                                         URLEncoder.encode(jsonData,"UTF-8") + "?lat=" + location.getLatitude() +
                                                                         "&lng="+ location.getLongitude();
                                 //String urlString = "http://192.168.1.5:8080/api/v1/user/" +
                                 //        Utils.getDeviceAppUID() + "/jsonload/" + jsonData + "?lat=" + location.getLatitude() +
                                 //        "&lng="+ location.getLongitude()
-                                Utils.postDataToServer(context,urlString);
+                                Utils.postDataToServer(urlString);
 
                             } catch (JSONException | UnsupportedEncodingException e) {
                                 e.printStackTrace();
                             }
                         }
                     }
-                    Utils.storeSPLocationUpdatesResult(context, locations);
+                    Utils.storeSPLocationUpdatesResult(locations);
                     //Utils.sendNotification(context, Utils.getLocationResultTitle(context, locations));
-                    Log.i(TAG, Utils.getSPLocationUpdatesResult(context));
+                    Log.i(TAG, Utils.getSPLocationUpdatesResult());
                     if (mWakeLockForLU != null){
                         if (mWakeLockForLU.isHeld()){
                             mWakeLockForLU.release();

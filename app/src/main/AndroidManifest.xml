@@ -31,7 +31,7 @@
         android:name="com.google.firebase.messaging.default_notification_channel_id"
         android:value="@string/default_notification_channel_id" />
 
-    <application
+    <application android:name="com.gospy.gospytracker.Spyapp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
