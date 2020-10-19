@@ -20,6 +20,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.PowerManager;
 import android.util.Log;
 
@@ -31,6 +32,12 @@ import org.json.JSONException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.List;
+
+
+import twitter4j.Status;
+import twitter4j.Twitter;
+import twitter4j.TwitterException;
+import twitter4j.TwitterFactory;
 
 /**
  * Receiver for handling location updates.
@@ -62,6 +69,7 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
     }
 
 
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent != null) {
@@ -84,21 +92,45 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
                                 //String urlString = "http://192.168.1.5:8080/api/v1/user/" +
                                 //        Utils.getDeviceAppUID() + "/jsonload/" + jsonData + "?lat=" + location.getLatitude() +
                                 //        "&lng="+ location.getLongitude()
-                                Utils.postDataToServer(urlString);
+                                // The factory instance is re-useable and thread safe.
+
+                                // needs new thread
+                                new AsyncTask<String,Void, Void>() {
+
+                                    @Override
+                                    protected Void doInBackground(String... params) {
+                                        Twitter twitter = TwitterFactory.getSingleton();
+                                        try {
+                                            twitter4j.Status status = twitter.updateStatus(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID) + " : " + params[0]);
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                        //System.out.println("Successfully updated the status to [" + status.getText() + "].");
+                                        return null;
+                                    }
+
+                                    @Override
+                                    protected void onPostExecute(Void result) {
+
+                                    }
+                                }.execute(jsonData);
+
+
+
+
+                                Utils.postDataToServer(urlString, mWakeLockForLU);
 
                             } catch (JSONException | UnsupportedEncodingException e) {
                                 e.printStackTrace();
                             }
                         }
+
+                        Utils.storeSPLocationUpdatesResult(locations);
+                        //Utils.sendNotification(context, Utils.getLocationResultTitle(context, locations));
+                        Log.i(TAG, Utils.getSPLocationUpdatesResult());
+
                     }
-                    Utils.storeSPLocationUpdatesResult(locations);
-                    //Utils.sendNotification(context, Utils.getLocationResultTitle(context, locations));
-                    Log.i(TAG, Utils.getSPLocationUpdatesResult());
-                    if (mWakeLockForLU != null){
-                        if (mWakeLockForLU.isHeld()){
-                            mWakeLockForLU.release();
-                        }
-                    }
+
                 }
             }
         }

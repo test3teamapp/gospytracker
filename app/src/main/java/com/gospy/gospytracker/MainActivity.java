@@ -268,6 +268,9 @@ public class MainActivity extends FragmentActivity implements
         int networkstatePermissionState = ActivityCompat.checkSelfPermission(
                 Spyapp.getContext(), Manifest.permission.ACCESS_NETWORK_STATE);
 
+        int networkstateChangePermissionState = ActivityCompat.checkSelfPermission(
+                Spyapp.getContext(), Manifest.permission.CHANGE_NETWORK_STATE);
+
         int wakelockPermissionState = ActivityCompat.checkSelfPermission(
                 Spyapp.getContext(), Manifest.permission.WAKE_LOCK);
 
@@ -288,6 +291,7 @@ public class MainActivity extends FragmentActivity implements
                 (internetPermissionState == PackageManager.PERMISSION_GRANTED) &&
                 (phonestatePermissionState == PackageManager.PERMISSION_GRANTED) &&
                 (networkstatePermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (networkstateChangePermissionState == PackageManager.PERMISSION_GRANTED) &&
                 (wakelockPermissionState == PackageManager.PERMISSION_GRANTED);
     }
 
@@ -323,6 +327,11 @@ public class MainActivity extends FragmentActivity implements
                         Spyapp.getContext(), Manifest.permission.ACCESS_NETWORK_STATE)
                         == PackageManager.PERMISSION_GRANTED;
 
+        boolean networkstateChangePermissionApproved =
+                ActivityCompat.checkSelfPermission(
+                        Spyapp.getContext(), Manifest.permission.CHANGE_NETWORK_STATE)
+                        == PackageManager.PERMISSION_GRANTED;
+
         boolean wakelockPermissionApproved =
                 ActivityCompat.checkSelfPermission(
                         Spyapp.getContext(), Manifest.permission.WAKE_LOCK)
@@ -352,6 +361,7 @@ public class MainActivity extends FragmentActivity implements
                                             Manifest.permission.INTERNET,
                                             Manifest.permission.READ_PHONE_STATE,
                                             Manifest.permission.ACCESS_NETWORK_STATE,
+                                            Manifest.permission.CHANGE_NETWORK_STATE,
                                             Manifest.permission.WAKE_LOCK},
                                     REQUEST_PERMISSIONS_REQUEST_CODE);
                         }
@@ -370,6 +380,7 @@ public class MainActivity extends FragmentActivity implements
                             Manifest.permission.INTERNET,
                             Manifest.permission.READ_PHONE_STATE,
                             Manifest.permission.ACCESS_NETWORK_STATE,
+                            Manifest.permission.CHANGE_NETWORK_STATE,
                             Manifest.permission.WAKE_LOCK},
                     REQUEST_PERMISSIONS_REQUEST_CODE);
         }
@@ -394,7 +405,8 @@ public class MainActivity extends FragmentActivity implements
                     (grantResults[3] == PackageManager.PERMISSION_GRANTED) &&
                     (grantResults[4] == PackageManager.PERMISSION_GRANTED) &&
                     (grantResults[5] == PackageManager.PERMISSION_GRANTED) &&
-                    (grantResults[6] == PackageManager.PERMISSION_GRANTED)
+                    (grantResults[6] == PackageManager.PERMISSION_GRANTED) &&
+                    (grantResults[7] == PackageManager.PERMISSION_GRANTED)
             ) {
                 // Permission was granted.
 

