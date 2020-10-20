@@ -113,12 +113,12 @@ public class MainActivity extends FragmentActivity implements
         if (Utils.isNetwork()) {
             Utils.getSettingsUpdate();
         }
-        if (Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.mDefaultDeviceAppUID)) {
+        if (Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID).equals(Utils.mDefaultDeviceAppUID)) {
             Utils.generateDeviceAppUID();
         }
         // update the text views for the device id
         mCurrentDeviceIdView.setText(Spyapp.getContext().getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID));
+                " : " + Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID));
 
 
         // Get token
@@ -150,35 +150,6 @@ public class MainActivity extends FragmentActivity implements
                 });
         // [END retrieve_current_token]
 
-        // firebase notification channel -- Οβσολετε. We handle the full message in the FBMessageService class
-
-       /* if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Create channel to show notifications.
-            String channelId = getString(R.string.default_notification_channel_id);
-            String channelName = getString(R.string.default_notification_channel_name);
-            NotificationManager notificationManager =
-                    getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(new NotificationChannel(channelId,
-                    channelName, NotificationManager.IMPORTANCE_LOW));
-        }*/
-
-        // If a notification message is tapped, any data accompanying the notification
-        // message is available in the intent extras. In this sample the launcher
-        // intent is fired when the notification is tapped, so any accompanying data would
-        // be handled here. If you want a different intent fired, set the click_action
-        // field of the notification message to the desired intent. The launcher intent
-        // is used when no click_action is specified.
-        //
-        // Handle possible data accompanying notification message.
-        // [START handle_data_extras]
-       /* if (getIntent().getExtras() != null) {
-            for (String key : getIntent().getExtras().keySet()) {
-                Object value = getIntent().getExtras().get(key);
-                Log.i(TAG, "Key: " + key + " Value: " + value);
-            }
-        }*/
-        // [END handle_data_extras]
-
     }
 
     @Override
@@ -195,7 +166,7 @@ public class MainActivity extends FragmentActivity implements
         updateButtonsState(Utils.getSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED));
         // update the text views for the device id
         mCurrentDeviceIdView.setText(Spyapp.getContext().getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID));
+                " : " + Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID));
         if (Utils.isNetwork()) {
             Utils.getSettingsUpdate();
         }
@@ -213,11 +184,11 @@ public class MainActivity extends FragmentActivity implements
         if (this.mUpdateDeviceIdView.getText().toString().isEmpty()) {
             Toast.makeText(Spyapp.getContext(), "Please provide an identifier for the device", Toast.LENGTH_SHORT).show();
         } else {
-            Utils.setSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID, this.mUpdateDeviceIdView.getText().toString());
+            Utils.setSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID, this.mUpdateDeviceIdView.getText().toString());
         }
         // update the text views for the device id
         mCurrentDeviceIdView.setText(this.getString(R.string.current_device_id) +
-                " : " + Utils.getSPStringValue( Utils.KEY_TRACKED_DEVICE_APP_UID));
+                " : " + Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID));
 
         // update the userid / firebaseid record on our server
         Utils.sendRegistrationToServer(Utils.getSPStringValue(Utils.KEY_CURRENT_DEVICE_FIREBASE_UID));
@@ -274,15 +245,18 @@ public class MainActivity extends FragmentActivity implements
         int wakelockPermissionState = ActivityCompat.checkSelfPermission(
                 Spyapp.getContext(), Manifest.permission.WAKE_LOCK);
 
-        if (ActivityCompat.checkSelfPermission(Spyapp.getContext(), Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return false;
+
+        if ((fineLocationPermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (backgroundLocationPermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (coarseLocationPermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (internetPermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (phonestatePermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (networkstatePermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (networkstateChangePermissionState == PackageManager.PERMISSION_GRANTED) &&
+                (wakelockPermissionState == PackageManager.PERMISSION_GRANTED)) {
+            Log.i(TAG, "All permissions accepted");
+        } else {
+            Log.e(TAG, "NOT all permissions accepted");
         }
 
         return (fineLocationPermissionState == PackageManager.PERMISSION_GRANTED) &&
@@ -339,7 +313,8 @@ public class MainActivity extends FragmentActivity implements
 
         boolean shouldProvideRationale =
                 permissionAccessFineLocationApproved && backgroundLocationPermissionApproved &&
-                        coarseLocationPermissionApproved && internetPermissionApproved && networkstatePermissionApproved;
+                        coarseLocationPermissionApproved && internetPermissionApproved && networkstatePermissionApproved &&
+                        phonestatePermissionApproved && networkstateChangePermissionApproved && wakelockPermissionApproved;
 
         // Provide an additional rationale to the user. This would happen if the user denied the
         // request previously, but didn't check the "Don't ask again" checkbox.
@@ -392,7 +367,11 @@ public class MainActivity extends FragmentActivity implements
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        Log.i(TAG, "onRequestPermissionResult");
+        Log.i(TAG, "onRequestPermissionResult. Requestcode / grantResults.length = " + requestCode + " / " + grantResults.length);
+        for (int i = 0; i < grantResults.length ; i++ ){
+            Log.i(TAG, "onRequestPermissionResult. grantResults[]" + grantResults[i]);
+        }
+
         if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE) {
             if (grantResults.length <= 0) {
                 // If user interaction was interrupted, the permission request is cancelled and you
@@ -409,6 +388,7 @@ public class MainActivity extends FragmentActivity implements
                     (grantResults[7] == PackageManager.PERMISSION_GRANTED)
             ) {
                 // Permission was granted.
+                Log.i(TAG, "All permissions were granted by the user");
 
             } else {
                 // Permission denied.

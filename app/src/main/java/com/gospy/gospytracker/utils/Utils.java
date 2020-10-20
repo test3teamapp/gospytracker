@@ -47,9 +47,12 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.TaskStackBuilder;
 import androidx.work.Constraints;
+import androidx.work.Data;
 import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
+import androidx.work.WorkRequest;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -253,33 +256,35 @@ public class Utils {
                 request.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
                 request.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
-                cm.requestNetwork(request.build(), new ConnectivityManager.NetworkCallback() {
-                    @Override
-                    public void onAvailable(Network network) {
-                        Log.d(TAG, "requestNetwork onAvailable()");
-                        avail[0] = true;
-                    }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    cm.requestNetwork(request.build(), new ConnectivityManager.NetworkCallback() {
+                        @Override
+                        public void onAvailable(Network network) {
+                            Log.d(TAG, "requestNetwork onAvailable()");
+                            avail[0] = true;
+                        }
 
-                    @Override
-                    public void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
-                        Log.d(TAG, "requestNetwork onCapabilitiesChanged()");
-                    }
+                        @Override
+                        public void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
+                            Log.d(TAG, "requestNetwork onCapabilitiesChanged()");
+                        }
 
-                    @Override
-                    public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
-                        Log.d(TAG, "requestNetwork onLinkPropertiesChanged()");
-                    }
+                        @Override
+                        public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
+                            Log.d(TAG, "requestNetwork onLinkPropertiesChanged()");
+                        }
 
-                    @Override
-                    public void onLosing(Network network, int maxMsToLive) {
-                        Log.d(TAG, "requestNetwork onLosing()");
-                    }
+                        @Override
+                        public void onLosing(Network network, int maxMsToLive) {
+                            Log.d(TAG, "requestNetwork onLosing()");
+                        }
 
-                    @Override
-                    public void onLost(Network network) {
-                        Log.d(TAG, "requestNetwork onLost()");
-                    }
-                }, 60 * 1000);
+                        @Override
+                        public void onLost(Network network) {
+                            Log.d(TAG, "requestNetwork onLost()");
+                        }
+                    }, 60 * 1000);
+                }
             }
         } catch (Exception exc) {
             Log.d(TAG, "Exception checking network");
@@ -288,7 +293,7 @@ public class Utils {
 
         // delay for allowing network to come up before return
         long currentTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() < currentTime + 3000){
+        while (System.currentTimeMillis() < currentTime + 3000) {
             // Log.i(TAG,"tik tok");
         }
         return avail[0];
@@ -444,72 +449,40 @@ public class Utils {
     /**
      * Post data to server
      */
-    public static void postDataToServer(String url, PowerManager.WakeLock mWakeLockForLU) {
+    public static void postDataToServer(String url) {
 
         final String receivedUrl = url;
-        // Instantiate the RequestQueue.
-        // final RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(Spyapp.getContext()).getRequestQueue();
+        // we use a worker to post the data
+        // hopefully it will wake up the device to get access to the network
+        WorkRequest postDataWorkRequest =
+                new OneTimeWorkRequest.Builder(PostToServerWorker.class)
+                        .setInputData(
+                                new Data.Builder()
+                                        .putString("SERVER_URI", receivedUrl)
+                                        .build()
+                        )
+                        .build();
 
-        try {
+        WorkManager
+                .getInstance(Spyapp.getContext())
+                .enqueue(postDataWorkRequest);
 
-            // Request a string response from the provided URL.
-            if (Utils.isNetwork()) {
-                /*
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, receivedUrl,
-                        new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response) {
-                                Log.i(TAG, response);
-                            }
-                        }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.i(TAG, error.toString());
-                    }
-                });
-
-                // Add the request to the RequestQueue.
-                queue.add(stringRequest);
-                //queue.start();
-
-                 */
-
-                new PostToServer().execute(receivedUrl); //execute the asynctask
-            }
-        } catch (Exception exc) {
-            exc.printStackTrace();
-        }
-
-        if (mWakeLockForLU != null) {
-            if (mWakeLockForLU.isHeld()) {
-                mWakeLockForLU.release();
-            }
-        }
     }
 
     /**
      * requests start of location updates with a Worker (minimum @ every 15 minutes).
      */
     public static void requestLocationUpdates() {
-
-        // PowerManager pm = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
-        //  wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-        //         "GoSpyTracker:WakelockForLU");
-        // wl.acquire();
-
-        //if (wl.isHeld()) {
-           /* WorkRequest uploadWorkRequest =
-                new OneTimeWorkRequest.Builder(MainWorker.class)
-                        .build();*/
-
+        /* skip constraints. We will try to bring up the network */
+        /*
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build();
-
+*/
         PeriodicWorkRequest luRequest =
                 new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES) // can not be less than 15 minuts. this 2 minutes setting is worthless
                         // Constraints
-                        .setConstraints(constraints)
+                        //.setConstraints(constraints)
                         // tag fro removing the work if needed
                         .addTag(mDefaultTAGLuWorker)
                         .build();
@@ -523,7 +496,6 @@ public class Utils {
         Utils.setAlarmForPeriodicLU(1000 * 60 * 2); // every 2 minutes
 
         Utils.setSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
-        // }
 
         Utils.sendPingToServer(Utils.PING_REASONS.PING_STARTTRACKING);
 
@@ -553,11 +525,7 @@ public class Utils {
      */
     public static void removeLocationUpdates() {
 
-        /*if (wl != null) {
-            if (wl.isHeld()){
-                wl.release();
-            }
-        }*/
+
         // cancel LU Worker
         WorkManager.getInstance(Spyapp.getContext()).cancelAllWorkByTag(mDefaultTAGLuWorker);
 
@@ -597,7 +565,7 @@ public class Utils {
                     URLEncoder.encode(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
                     "/token/" + token;
 
-            Utils.postDataToServer(urlString, null);
+            Utils.postDataToServer(urlString);
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -611,7 +579,7 @@ public class Utils {
                     ":8080/api/v1/user/" +
                     URLEncoder.encode(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID), "UTF-8") +
                     "/reason/" + reason.toString();
-            Utils.postDataToServer(urlString, null);
+            Utils.postDataToServer(urlString);
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();

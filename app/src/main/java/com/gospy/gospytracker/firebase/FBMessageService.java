@@ -80,7 +80,7 @@ public class FBMessageService extends FirebaseMessagingService {
                 //handleNow();
                 Utils.requestLocationUpdates();
             } else if (remoteMessage.getData().containsKey(mMsgCommandSTOP_TRACKING)) {
-
+                //handleNow();
                 Utils.removeLocationUpdates();
             }
 

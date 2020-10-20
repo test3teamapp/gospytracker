@@ -4,17 +4,14 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.BufferedWriter;
-import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 
-public class PostToServer extends AsyncTask<String, Void, Void> {
+public class PostToServerAsyncTask extends AsyncTask<String, Void, Void> {
 //New class for the Asynctask, where the data will be fetched in the background
 
-    private static final String TAG = PostToServer.class.getSimpleName();
+    private static final String TAG = PostToServerAsyncTask.class.getSimpleName();
 
     @Override
     protected Void doInBackground(String... params) {

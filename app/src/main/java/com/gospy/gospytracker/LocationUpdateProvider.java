@@ -132,18 +132,13 @@ public class LocationUpdateProvider {
 
         if (mFusedLocationClient != null) {
             try {
-               /* PowerManager pm = (PowerManager) Spyapp.getContext().getSystemService(Context.POWER_SERVICE);
-                PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                        "GoSpyTracker:WakelockForLU");
-                wl.acquire();
-*/
-                //if (wl.isHeld()) {
+
                     Log.i(TAG, "Starting location updates");
                     //LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
 
                     mFusedLocationClient.requestLocationUpdates(mLocationRequestGSM, getPendingIntent());
                     mFusedLocationClient.requestLocationUpdates(mLocationRequestGPS, getPendingIntent());
-               // }
+
             } catch (SecurityException e) {
 
                 e.printStackTrace();
