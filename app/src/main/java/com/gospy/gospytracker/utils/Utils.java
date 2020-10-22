@@ -36,8 +36,6 @@ import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.wifi.WifiManager;
 import android.os.Build;
-import android.os.CountDownTimer;
-import android.os.Looper;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.telephony.TelephonyManager;
@@ -46,19 +44,13 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.TaskStackBuilder;
-import androidx.work.Constraints;
 import androidx.work.Data;
-import androidx.work.NetworkType;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.WorkRequest;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
 import com.gospy.gospytracker.LocationUpdateProvider;
 import com.gospy.gospytracker.MainActivity;
 import com.gospy.gospytracker.MainWorker;
@@ -100,7 +92,8 @@ public class Utils {
     public final static String mDefaultDeviceAppUID = "UNKNOWN";
     public final static String mDefaultUserID = "UNKNOWN_USER_ID";
     public final static String mDefaultServerIp = "158.101.171.124";
-    private static final String mDefaultTAGLuWorker = "periodicLuWorkRequest";
+    public static final String mDefaultTAGLuWorker = "periodicLuWorkRequest";
+    public static final String mDefaultTAGLuWorkerRepeatable = "uniqueRepeatableLuWorkRequest";
 
     private static WorkManager mWorkManager;
     private static PowerManager.WakeLock mWakeLock;
@@ -489,15 +482,23 @@ public class Utils {
 
         WorkManager.getInstance(Spyapp.getContext()).enqueue(luRequest);
 
-        // minimum repeating interval for worker is 15 minutes.
-        // So, we start an alarm for every (X) minutes to get more LUs
-        // this is also helpfull since after a reboot alarms are not triggered, if we were to use only alarms
-
-        Utils.setAlarmForPeriodicLU(1000 * 60 * 2); // every 2 minutes
-
         Utils.setSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, true);
 
         Utils.sendPingToServer(Utils.PING_REASONS.PING_STARTTRACKING);
+
+        // minimum repeating interval for worker is 15 minutes.
+        // So, we start another work wich will trigger itself when finished
+        // every 2 minutes
+        // this is also helpfull since after a reboot alarms are not triggered, if we were to use only alarms
+
+        // [START dispatch_job]
+        OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(UniqueRepeatableLUWorker.class)
+                // tag for removing the work if needed
+                .addTag(mDefaultTAGLuWorkerRepeatable)
+                .setInitialDelay(2,TimeUnit.MINUTES)
+                .build();
+        WorkManager.getInstance(Spyapp.getContext()).enqueueUniqueWork(mDefaultTAGLuWorkerRepeatable, ExistingWorkPolicy.REPLACE, work);
+        // [END dispatch_job]
 
     }
 
@@ -528,8 +529,12 @@ public class Utils {
 
         // cancel LU Worker
         WorkManager.getInstance(Spyapp.getContext()).cancelAllWorkByTag(mDefaultTAGLuWorker);
+        // cancel LU Worker
+        WorkManager.getInstance(Spyapp.getContext()).cancelAllWorkByTag(mDefaultTAGLuWorkerRepeatable);
 
         // cancel the alarm as well
+        //not used
+        /*
         Intent intent = new Intent(Spyapp.getContext(), AlarmReceiver.class);
         intent.setAction(AlarmReceiver.ACTION_PROCESS_ALARM);
         mAlarmPendingIntent = PendingIntent.getBroadcast(Spyapp.getContext(), ALARM_NOTIFICATION_ID,
@@ -539,7 +544,7 @@ public class Utils {
             mAlarmManager = (AlarmManager) Spyapp.getContext().getSystemService(Spyapp.getContext().ALARM_SERVICE);
         }
         mAlarmManager.cancel(mAlarmPendingIntent);
-
+        */
         // cancel any fused location updates already working
 
         LocationUpdateProvider.getSingletonLocationUpdateProvider().removeLocationUpdates();

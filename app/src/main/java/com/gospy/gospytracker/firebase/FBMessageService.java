@@ -70,16 +70,14 @@ public class FBMessageService extends FirebaseMessagingService {
         if (remoteMessage.getData().size() > 0) {
             Log.i(TAG, "Message data payload: " + remoteMessage.getData());
 
-
             if (remoteMessage.getData().containsKey(mMsgCommandTRIGGER_LU)) {
                 // For long-running tasks (10 seconds or more) use WorkManager.
                 Utils.sendPingToServer(Utils.PING_REASONS.PING_TRIGGERLU);
-                scheduleJob();
+                scheduleJob(mMsgCommandTRIGGER_LU);
             } else if (remoteMessage.getData().containsKey(mMsgCommandSTART_TRACKING)) {
-                // Handle message within 10 seconds
-                //handleNow();
-                Utils.requestLocationUpdates();
+                scheduleJob(mMsgCommandSTART_TRACKING);
             } else if (remoteMessage.getData().containsKey(mMsgCommandSTOP_TRACKING)) {
+                // Handle message within 10 seconds
                 //handleNow();
                 Utils.removeLocationUpdates();
             }
@@ -122,12 +120,20 @@ public class FBMessageService extends FirebaseMessagingService {
     /**
      * Schedule async work using WorkManager.
      */
-    private void scheduleJob() {
-        // [START dispatch_job]
-        OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(FBMessageWorker.class)
-                .build();
-        WorkManager.getInstance(Spyapp.getContext()).beginWith(work).enqueue();
-        // [END dispatch_job]
+    private void scheduleJob(String cause) {
+        if (cause.equals(mMsgCommandTRIGGER_LU)) {
+            // [START dispatch_job]
+            OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(FBMessageWorker.class)
+                    .build();
+            WorkManager.getInstance(Spyapp.getContext()).enqueue(work);
+            // [END dispatch_job]
+        }else if (cause.equals(mMsgCommandSTART_TRACKING)){
+            // [START dispatch_job]
+            OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(FBMessageWorkerStartTracking.class)
+                    .build();
+            WorkManager.getInstance(Spyapp.getContext()).enqueue(work);
+            // [END dispatch_job]
+        }
     }
 
     /**

@@ -19,6 +19,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.gospy.gospytracker.receivers.AlarmReceiver;
 import com.gospy.gospytracker.receivers.LocationUpdatesBroadcastReceiver;
+import com.gospy.gospytracker.utils.StartUniqueRepeatableLUWorkerAsyncTask;
 import com.gospy.gospytracker.utils.Utils;
 
 import java.util.Calendar;
@@ -41,6 +42,10 @@ public class MainWorker extends Worker {
         // Do the work here--in this case, upload the images.
 
         LocationUpdateProvider.getSingletonLocationUpdateProvider().requestLocationUpdates();
+
+        // in case it has stopped
+        // restart the every2minutes repeated worker for triggering LU
+        new StartUniqueRepeatableLUWorkerAsyncTask().execute();
 
         return Result.success();
     }

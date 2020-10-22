@@ -122,12 +122,11 @@ public class PostToServerWorker extends Worker {
         // Volley cashes the requests. Hopefully, if the network is brought up - if not already up -
         // it will send them then.
 
-        // Instantiate the RequestQueue for volley.
-        final RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(super.getApplicationContext()).getRequestQueue();
-
         try {
-
+            // Instantiate the RequestQueue for volley.
+            final RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(super.getApplicationContext()).getRequestQueue();
             // Request a string response from the provided URL.
+
             if (Utils.isNetwork()) {
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, serverUriInput,

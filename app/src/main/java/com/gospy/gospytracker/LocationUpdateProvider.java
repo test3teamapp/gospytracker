@@ -7,8 +7,10 @@ import android.os.PowerManager;
 import android.util.Log;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.Task;
 import com.gospy.gospytracker.receivers.LocationUpdatesBroadcastReceiver;
 
 public class LocationUpdateProvider {
@@ -30,7 +32,7 @@ public class LocationUpdateProvider {
      * The max time before batched results are delivered by location services. Results may be
      * delivered sooner than this interval.
      */
-    private static final long MAX_WAIT_TIME = UPDATE_INTERVAL * 1; // Every 1 minute.
+    private static final long MAX_WAIT_TIME =  3 * 60 * 1000; // Every 3 minute.
     private static LocationUpdateProvider mSingletonObject = null;
     /**
      * Stores parameters for requests to the FusedLocationProviderApi.
@@ -135,9 +137,8 @@ public class LocationUpdateProvider {
 
                     Log.i(TAG, "Starting location updates");
                     //LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
-
                     mFusedLocationClient.requestLocationUpdates(mLocationRequestGSM, getPendingIntent());
-                    mFusedLocationClient.requestLocationUpdates(mLocationRequestGPS, getPendingIntent());
+                    //mFusedLocationClient.requestLocationUpdates(mLocationRequestGPS, getPendingIntent());
 
             } catch (SecurityException e) {
 
