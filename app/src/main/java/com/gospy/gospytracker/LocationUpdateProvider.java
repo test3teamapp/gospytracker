@@ -1,15 +1,22 @@
 package com.gospy.gospytracker;
 
+import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.PowerManager;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.gospy.gospytracker.receivers.LocationUpdatesBroadcastReceiver;
 
@@ -32,7 +39,7 @@ public class LocationUpdateProvider {
      * The max time before batched results are delivered by location services. Results may be
      * delivered sooner than this interval.
      */
-    private static final long MAX_WAIT_TIME =  3 * 60 * 1000; // Every 3 minute.
+    private static final long MAX_WAIT_TIME =  2 * 60 * 1000; // Every 2 minute.
     private static LocationUpdateProvider mSingletonObject = null;
     /**
      * Stores parameters for requests to the FusedLocationProviderApi.
@@ -42,8 +49,10 @@ public class LocationUpdateProvider {
     /**
      * Provides access to the Fused Location Provider API.
      */
-    private FusedLocationProviderClient mFusedLocationClient = null;
-    Intent mIntent = null;
+    private FusedLocationProviderClient mFusedLocationClientGPS = null;
+    private FusedLocationProviderClient mFusedLocationClientGSM = null;
+    Intent mIntentGPS = null;
+    Intent mIntentGSM = null;
 
     private LocationUpdateProvider() {
 
@@ -101,7 +110,7 @@ public class LocationUpdateProvider {
         mLocationRequestGPS.setMaxWaitTime(MAX_WAIT_TIME);
     }
 
-    private PendingIntent getPendingIntent() {
+    private PendingIntent getPendingIntentGPS() {
         // Note: for apps targeting API level 25 ("Nougat") or lower, either
         // PendingIntent.getService() or PendingIntent.getBroadcast() may be used when requesting
         // location updates. For apps targeting API level O, only
@@ -113,11 +122,30 @@ public class LocationUpdateProvider {
 //        intent.setAction(LocationUpdatesIntentService.ACTION_PROCESS_UPDATES);
 //        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        if (mIntent == null) {
-            mIntent = new Intent(Spyapp.getContext(), LocationUpdatesBroadcastReceiver.class);
+        if (mIntentGPS == null) {
+            mIntentGPS = new Intent(Spyapp.getContext(), LocationUpdatesBroadcastReceiver.class);
         }
-        mIntent.setAction(LocationUpdatesBroadcastReceiver.ACTION_PROCESS_UPDATES);
-        return PendingIntent.getBroadcast(Spyapp.getContext(), 0, mIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        mIntentGPS.setAction(LocationUpdatesBroadcastReceiver.ACTION_PROCESS_UPDATES);
+        return PendingIntent.getBroadcast(Spyapp.getContext(), 0, mIntentGPS, PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private PendingIntent getPendingIntentGSM() {
+        // Note: for apps targeting API level 25 ("Nougat") or lower, either
+        // PendingIntent.getService() or PendingIntent.getBroadcast() may be used when requesting
+        // location updates. For apps targeting API level O, only
+        // PendingIntent.getBroadcast() should be used. This is due to the limits placed on services
+        // started in the background in "O".
+
+        // TODO(developer): uncomment to use PendingIntent.getService().
+//        Intent intent = new Intent(this, LocationUpdatesIntentService.class);
+//        intent.setAction(LocationUpdatesIntentService.ACTION_PROCESS_UPDATES);
+//        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        if (mIntentGSM == null) {
+            mIntentGSM = new Intent(Spyapp.getContext(), LocationUpdatesBroadcastReceiver.class);
+        }
+        mIntentGSM.setAction(LocationUpdatesBroadcastReceiver.ACTION_PROCESS_UPDATES);
+        return PendingIntent.getBroadcast(Spyapp.getContext(), 0, mIntentGSM, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     /**
@@ -126,25 +154,42 @@ public class LocationUpdateProvider {
      */
     public void requestLocationUpdates() {
 
-        if (mFusedLocationClient == null) {
-            mFusedLocationClient = LocationServices.getFusedLocationProviderClient(Spyapp.getContext());
+        if (mFusedLocationClientGPS == null) {
+            mFusedLocationClientGPS = LocationServices.getFusedLocationProviderClient(Spyapp.getContext());
         }
-
+        if (mFusedLocationClientGSM == null) {
+            mFusedLocationClientGSM = LocationServices.getFusedLocationProviderClient(Spyapp.getContext());
+        }
         createLocationRequest();
 
-        if (mFusedLocationClient != null) {
+        if (mFusedLocationClientGSM != null) {
             try {
 
-                    Log.i(TAG, "Starting location updates");
-                    //LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
-                    mFusedLocationClient.requestLocationUpdates(mLocationRequestGSM, getPendingIntent());
-                    //mFusedLocationClient.requestLocationUpdates(mLocationRequestGPS, getPendingIntent());
+                Log.i(TAG, "Starting location updates");
+                //LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
+                mFusedLocationClientGSM.requestLocationUpdates(mLocationRequestGSM, getPendingIntentGSM());
+                //mFusedLocationClient.requestLocationUpdates(mLocationRequestGPS, getPendingIntent());
 
             } catch (SecurityException e) {
 
                 e.printStackTrace();
             }
         }
+
+        if (mFusedLocationClientGPS != null) {
+            try {
+
+                    Log.i(TAG, "Starting location updates");
+                    //LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
+                    mFusedLocationClientGPS.requestLocationUpdates(mLocationRequestGPS, getPendingIntentGPS());
+
+
+            } catch (SecurityException e) {
+
+                e.printStackTrace();
+            }
+        }
+
     }
 
     /**
@@ -152,12 +197,64 @@ public class LocationUpdateProvider {
      * Only access it through the singleton object
      */
     public void removeLocationUpdates() {
-        Log.i(TAG, "Removing location updates from fused client");
-        if (mFusedLocationClient != null) {
-            if (mIntent != null) {
-                mFusedLocationClient.removeLocationUpdates(PendingIntent.getBroadcast(Spyapp.getContext(), 0, mIntent, PendingIntent.FLAG_CANCEL_CURRENT));
-                Log.i(TAG, "Removed location updates");
+        Log.i(TAG, "Removing location updates from fused clients");
+        if (mFusedLocationClientGPS != null) {
+            if (mIntentGPS != null) {
+                mFusedLocationClientGPS.removeLocationUpdates(PendingIntent.getBroadcast(Spyapp.getContext(), 0, mIntentGPS, PendingIntent.FLAG_CANCEL_CURRENT));
+                Log.i(TAG, "Removed location updates from GPS");
             }
         }
+        if (mFusedLocationClientGSM != null) {
+            if (mIntentGPS != null) {
+                mFusedLocationClientGSM.removeLocationUpdates(PendingIntent.getBroadcast(Spyapp.getContext(), 0, mIntentGSM, PendingIntent.FLAG_CANCEL_CURRENT));
+                Log.i(TAG, "Removed location updates from GSM");
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    public Location getLatestKnownLocation(){
+
+        final Location[] locationArray = new Location[2];
+        locationArray[0] = null;
+        locationArray[1] = null;
+        if (mFusedLocationClientGPS != null) {
+            Log.i(TAG, "Requesting last known GPS location");
+            mFusedLocationClientGPS.getLastLocation()
+                    .addOnSuccessListener(new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                // Logic to handle location object
+                                Log.i(TAG, "last known location from GPS : " + location.getLatitude() + "," + location.getLongitude());
+                            }
+                            locationArray[0] = location;
+                        }
+                    });
+        }
+
+        if (mFusedLocationClientGSM != null) {
+            Log.i(TAG, "Requesting last known GSM location");
+            mFusedLocationClientGSM.getLastLocation()
+                    .addOnSuccessListener(new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                // Logic to handle location object
+                                Log.i(TAG, "last known location from GSM: " + location.getLatitude() + "," + location.getLongitude());
+                            }
+                            locationArray[1] = location;
+                        }
+                    });
+        }
+
+        if (locationArray[0] != null) {
+            return locationArray[0];
+        } else if (locationArray[1] != null){
+           return  locationArray[1];
+        }
+        return null;
     }
 }

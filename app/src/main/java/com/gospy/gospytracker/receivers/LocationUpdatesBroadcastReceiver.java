@@ -20,11 +20,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
-import android.os.AsyncTask;
-import android.os.PowerManager;
 import android.util.Log;
 
 import com.google.android.gms.location.LocationResult;
+import com.gospy.gospytracker.GeofencesProvider;
 import com.gospy.gospytracker.utils.Utils;
 
 import org.json.JSONException;
@@ -32,12 +31,6 @@ import org.json.JSONException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.List;
-
-
-import twitter4j.Status;
-import twitter4j.Twitter;
-import twitter4j.TwitterException;
-import twitter4j.TwitterFactory;
 
 /**
  * Receiver for handling location updates.
@@ -71,6 +64,7 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
                         for (Location location : locations
                         ) {
                             //final Location  finalLocation = location;
+                            GeofencesProvider.getSingletonLocationUpdateProvider().setGeofencesAroundPoint(location);
                             try {
                                 String jsonData = Utils.getLocationResultJson(location);
                                 String urlString = "http://" + Utils.getSPStringValue(Utils.KEY_SERVER_IP) +

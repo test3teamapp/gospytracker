@@ -113,10 +113,10 @@ public class PostToServerWorker extends Worker {
         }
 
         // delay for allowing network to come up before return
-        long currentTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() < currentTime + 3000) {
+        //long currentTime = System.currentTimeMillis();
+       // while (System.currentTimeMillis() < currentTime + 3000) {
             // Log.i(TAG,"tik tok");
-        }
+       // }
 
         Log.i(TAG,"Trying to post data. Network is : " + avail[0]);
         // Volley cashes the requests. Hopefully, if the network is brought up - if not already up -
@@ -127,7 +127,7 @@ public class PostToServerWorker extends Worker {
             final RequestQueue queue = VolleyHttpRequestQueueSingleton.getInstance(super.getApplicationContext()).getRequestQueue();
             // Request a string response from the provided URL.
 
-            if (Utils.isNetwork()) {
+           // if (Utils.isNetwork()) {
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, serverUriInput,
                         new Response.Listener<String>() {
@@ -146,7 +146,7 @@ public class PostToServerWorker extends Worker {
                 queue.add(stringRequest);
                 queue.start();
 
-            }
+            //}
         } catch (Exception exc) {
             exc.printStackTrace();
             return Result.failure();

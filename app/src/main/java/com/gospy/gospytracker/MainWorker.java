@@ -45,7 +45,7 @@ public class MainWorker extends Worker {
 
         // in case it has stopped
         // restart the every2minutes repeated worker for triggering LU
-        new StartUniqueRepeatableLUWorkerAsyncTask().execute();
+        //new StartUniqueRepeatableLUWorkerAsyncTask().execute();
 
         return Result.success();
     }

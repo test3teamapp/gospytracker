@@ -51,6 +51,7 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.WorkRequest;
 
+import com.gospy.gospytracker.GeofencesProvider;
 import com.gospy.gospytracker.LocationUpdateProvider;
 import com.gospy.gospytracker.MainActivity;
 import com.gospy.gospytracker.MainWorker;
@@ -473,7 +474,7 @@ public class Utils {
                 .build();
 */
         PeriodicWorkRequest luRequest =
-                new PeriodicWorkRequest.Builder(MainWorker.class, 2, TimeUnit.MINUTES) // can not be less than 15 minuts. this 2 minutes setting is worthless
+                new PeriodicWorkRequest.Builder(MainWorker.class, 15, TimeUnit.MINUTES) // can not be less than 15 minuts. this 2 minutes setting is worthless
                         // Constraints
                         //.setConstraints(constraints)
                         // tag fro removing the work if needed
@@ -487,11 +488,12 @@ public class Utils {
         Utils.sendPingToServer(Utils.PING_REASONS.PING_STARTTRACKING);
 
         // minimum repeating interval for worker is 15 minutes.
-        // So, we start another work wich will trigger itself when finished
+        // So, we start another work which will trigger itself when finished
         // every 2 minutes
         // this is also helpfull since after a reboot alarms are not triggered, if we were to use only alarms
 
         // [START dispatch_job]
+        /*
         OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(UniqueRepeatableLUWorker.class)
                 // tag for removing the work if needed
                 .addTag(mDefaultTAGLuWorkerRepeatable)
@@ -499,14 +501,23 @@ public class Utils {
                 .build();
         WorkManager.getInstance(Spyapp.getContext()).enqueueUniqueWork(mDefaultTAGLuWorkerRepeatable, ExistingWorkPolicy.REPLACE, work);
         // [END dispatch_job]
+         */
+        // or use the alarm for triggering
+        setAlarmForPeriodicLU(3*60*1000); // every 3 minutes
 
+        // get latest location and apply geofence.
+        // if we get a new location from fused client it will be updated
+        Location lastloc = LocationUpdateProvider.getSingletonLocationUpdateProvider().getLatestKnownLocation();
+        if (lastloc != null){
+            GeofencesProvider.getSingletonLocationUpdateProvider().setGeofencesAroundPoint(lastloc);
+        }
     }
 
     public static void setAlarmForPeriodicLU(int milliseconds) {
 
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(System.currentTimeMillis());
-        calendar.add(Calendar.MINUTE, 1);
+        calendar.add(Calendar.MINUTE, 1); // starting in one minute
 
         Intent intent = new Intent(Spyapp.getContext(), AlarmReceiver.class);
         intent.setAction(AlarmReceiver.ACTION_PROCESS_ALARM);
@@ -516,6 +527,7 @@ public class Utils {
         if (mAlarmManager == null) {
             mAlarmManager = (AlarmManager) Spyapp.getContext().getSystemService(Spyapp.getContext().ALARM_SERVICE);
         }
+        assert mAlarmManager != null;
         mAlarmManager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), milliseconds, mAlarmPendingIntent);
 
 
@@ -533,8 +545,7 @@ public class Utils {
         WorkManager.getInstance(Spyapp.getContext()).cancelAllWorkByTag(mDefaultTAGLuWorkerRepeatable);
 
         // cancel the alarm as well
-        //not used
-        /*
+
         Intent intent = new Intent(Spyapp.getContext(), AlarmReceiver.class);
         intent.setAction(AlarmReceiver.ACTION_PROCESS_ALARM);
         mAlarmPendingIntent = PendingIntent.getBroadcast(Spyapp.getContext(), ALARM_NOTIFICATION_ID,
@@ -544,10 +555,12 @@ public class Utils {
             mAlarmManager = (AlarmManager) Spyapp.getContext().getSystemService(Spyapp.getContext().ALARM_SERVICE);
         }
         mAlarmManager.cancel(mAlarmPendingIntent);
-        */
+
         // cancel any fused location updates already working
 
         LocationUpdateProvider.getSingletonLocationUpdateProvider().removeLocationUpdates();
+        // remove geofences
+        GeofencesProvider.getSingletonLocationUpdateProvider().removeAllGeofences();
 
         Utils.setSPBooleanValue(Utils.IS_KEY_LOCATION_UPDATES_REQUESTED, false);
 

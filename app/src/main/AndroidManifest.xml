@@ -51,7 +51,7 @@
         <activity android:name=".MainActivity">
         </activity>
         <receiver
-            android:name=".receivers.LocationUpdatesBroadcastReceiver"
+            android:name="com.gospy.gospytracker.receivers.LocationUpdatesBroadcastReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.gospy.gospytracker.receivers.LocationUpdatesBroadcastReceiver.ACTION_PROCESS_UPDATES" />
@@ -63,6 +63,10 @@
             <intent-filter>
                 <action android:name="com.gospy.gospytracker.receivers.AlarmReceiver.ACTION_PROCESS_ALARM" />
             </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.gospy.gospytracker.receivers.GeofenceBroadcastReceiver"
+            android:exported="true">
         </receiver>
         <service
             android:name=".firebase.FBMessageService"

@@ -53,7 +53,6 @@ public class Spyapp extends Application {
             }
         }
         */
-
     }
 
     @Override
