@@ -95,25 +95,25 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
                                 // The factory instance is re-useable and thread safe.
 
                                 // needs new thread
-                                new AsyncTask<String,Void, Void>() {
-
-                                    @Override
-                                    protected Void doInBackground(String... params) {
-                                        Twitter twitter = TwitterFactory.getSingleton();
-                                        try {
-                                            twitter4j.Status status = twitter.updateStatus(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID) + " : " + params[0]);
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        //System.out.println("Successfully updated the status to [" + status.getText() + "].");
-                                        return null;
-                                    }
-
-                                    @Override
-                                    protected void onPostExecute(Void result) {
-
-                                    }
-                                }.execute(jsonData);
+//                                new AsyncTask<String,Void, Void>() {
+//
+//                                    @Override
+//                                    protected Void doInBackground(String... params) {
+//                                        Twitter twitter = TwitterFactory.getSingleton();
+//                                        try {
+//                                            twitter4j.Status status = twitter.updateStatus(Utils.getSPStringValue(Utils.KEY_TRACKED_DEVICE_APP_UID) + " : " + params[0]);
+//                                        } catch (Exception e) {
+//                                            e.printStackTrace();
+//                                        }
+//                                        //System.out.println("Successfully updated the status to [" + status.getText() + "].");
+//                                        return null;
+//                                    }
+//
+//                                    @Override
+//                                    protected void onPostExecute(Void result) {
+//
+//                                    }
+//                                }.execute(jsonData);
 
 
 
