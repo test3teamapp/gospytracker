@@ -89,7 +89,7 @@ public class MainWorker extends Worker {
 
         // Sets the maximum time when batched location updates are delivered. Updates may be
         // delivered sooner than this interval.
-        mLocationRequestGSM.setMaxWaitTime(60000);
+        mLocationRequestGSM.setMaxWaitTime(40000);
         mLocationRequestGPS.setMaxWaitTime(60000);
 
         if (mFusedLocationClient != null) {
@@ -104,7 +104,7 @@ public class MainWorker extends Worker {
                     LocationUpdatesBroadcastReceiver.setmWakeLockForLU(wl);
 
                     mFusedLocationClient.requestLocationUpdates(mLocationRequestGSM, pi);
-                    mFusedLocationClient.requestLocationUpdates(mLocationRequestGPS, pi);
+                    //mFusedLocationClient.requestLocationUpdates(mLocationRequestGPS, pi);
                 }
             } catch (SecurityException e) {
 
